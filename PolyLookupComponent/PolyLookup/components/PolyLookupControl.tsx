@@ -64,7 +64,7 @@ export const Body = ({
     },
   };
 
-  const { data: relationshipDefinition } = useQuery({
+  const { data: relationshipDefinition, isLoading: isLoadingRelationshipDefinition } = useQuery({
     queryKey: ["relationshipDefinition", { currentTable, relationshipName }],
     queryFn: () => getManytoManyRelationShipDefinition(currentTable, relationshipName),
   });
@@ -85,14 +85,18 @@ export const Body = ({
       : relationshipDefinition?.Entity2IntersectAttribute;
 
   // get current table definition
-  const { data: currentTableDefinition } = useQuery({
+  const { data: currentTableDefinition, isLoading: isLoadingCurrentTableDefinition } = useQuery({
     queryKey: ["currentTableDefinition", currentTable],
     queryFn: () => getEntityDefinition(currentTable),
     enabled: !!relationshipDefinition,
   });
 
   // get associated table definition
-  const { data: associatedTableDefinition, isSuccess: isAssociatedTableDefinitionSuccess } = useQuery({
+  const {
+    data: associatedTableDefinition,
+    isLoading: isLoadingAssociatedTableDefinition,
+    isSuccess: isAssociatedTableDefinitionSuccess,
+  } = useQuery({
     queryKey: ["associatedTableDefinition", associatedTable],
     queryFn: () => getEntityDefinition(associatedTable),
     enabled: !!relationshipDefinition,
@@ -106,7 +110,7 @@ export const Body = ({
   }
 
   // get top 20 suggestions from associated table
-  const { data: suggestionItems } = useQuery({
+  const { data: suggestionItems, isLoading: isLoadingSuggestionItems } = useQuery({
     queryKey: ["suggestionItems", associatedTable],
     queryFn: () =>
       retrieveMultiple(
@@ -120,7 +124,7 @@ export const Body = ({
   });
 
   // get intersect table definition
-  const { data: intersectTableDefinition } = useQuery({
+  const { data: intersectTableDefinition, isLoading: isLoadingIntersectTableDefinition } = useQuery({
     queryKey: ["intersectTableDefinition", relationshipDefinition?.IntersectEntityName],
     queryFn: () => getEntityDefinition(relationshipDefinition?.IntersectEntityName),
     enabled: !!relationshipDefinition?.IntersectEntityName,
@@ -130,6 +134,7 @@ export const Body = ({
   const {
     data: selectedItems,
     refetch: selectedItemsRefetch,
+    isLoading: isLoadingSelectedItems,
     isSuccess,
   } = useQuery({
     queryKey: ["selectedItems", { currentTable, relationshipName }],
@@ -247,6 +252,14 @@ export const Body = ({
     return null;
   };
 
+  const isDataLoading =
+    isLoadingRelationshipDefinition ||
+    isLoadingCurrentTableDefinition ||
+    isLoadingAssociatedTableDefinition ||
+    isLoadingIntersectTableDefinition ||
+    isLoadingSuggestionItems ||
+    isLoadingSelectedItems;
+
   return (
     <TagPicker
       selectedItems={selectedItems?.map(
@@ -272,6 +285,13 @@ export const Body = ({
         return TagPickerBase.defaultProps.onRenderItem(props);
       }}
       resolveDelay={100}
+      inputProps={{
+        placeholder: isDataLoading
+          ? "Loading"
+          : selectedItems?.length || disabled
+          ? ""
+          : `Select ${associatedTableDefinition?.DisplayCollectionName.UserLocalizedLabel.Label ?? "an item"}`,
+      }}
     />
   );
 };
