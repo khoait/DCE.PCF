@@ -56,6 +56,7 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
         RelationshipTypeEnum[context.parameters.relationshipType.raw as keyof typeof RelationshipTypeEnum],
       clientUrl: context.page.getClientUrl(),
       sortBy: context.parameters.sortAttribute.raw ?? undefined,
+      itemLimit: context.parameters.itemLimit.raw ?? undefined,
       pageSize: context.userSettings.pagingLimit ?? undefined,
       disabled: context.mode.isControlDisabled,
       onChange: context.parameters.outputSelected.raw === "1" ? this.onLookupChange : undefined,
