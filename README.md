@@ -6,11 +6,11 @@ This Github repository contains a collection of React-based components that prov
 
 The components included in this repository are fully documented with examples and usage guidelines. You can find the documentation in the wiki page of the repository.
 
-1. **PolyLookup**: Multi-select lookup supporting different type of many-to-many relationships.
+1. **[PolyLookup](https://github.com/khoait/DCE.PCF/wiki/PolyLookup)**: Multi-select lookup supporting different type of many-to-many relationships.
 
 ## ⚙️ Installation
 
-To use these components in your Power Apps project, you'll need to download the solution_managed.zip file from the Realeses page and import to your environment. The solution contains all components in this repo.
+To use these components in your Power Apps project, you'll need to download the solution_managed.zip file from the [Releases page](https://github.com/khoait/DCE.PCF/releases) and import to your environment. The solution contains all components in this repo.
 
 Once you've installed the solution, you can select the components in the form designer.
 
@@ -37,4 +37,3 @@ I'll review your changes and work with you to merge them into the main repositor
 ### Git branches
 
 - **main**: This branch contains the latest stable release of the components.
-- <_component_>**dev**: This branch contains the latest development version of the components. We recommend using this branch if you want to contribute to the project or try out the latest features.
