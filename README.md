@@ -37,4 +37,3 @@ I'll review your changes and work with you to merge them into the main repositor
 ### Git branches
 
 - **main**: This branch contains the latest stable release of the components.
-- <_component_>**dev**: This branch contains the latest development version of the components. We recommend using this branch if you want to contribute to the project or try out the latest features.
