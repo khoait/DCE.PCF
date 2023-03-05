@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DCEPCF" constructor="PolyLookup" version="1.0.10" display-name-key="PolyLookup" description-key="Multi-select lookup supporting different type of many-to-many relationships. v1.0.10" control-type="virtual" >
+  <control namespace="DCEPCF" constructor="PolyLookup" version="1.0.11" display-name-key="PolyLookup" description-key="Multi-select lookup supporting different type of many-to-many relationships. v1.0.10" control-type="virtual" >
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
     Example1:
@@ -30,6 +30,7 @@
       <value name="true" display-name-key="Yes">1</value>
     </property>
     <property name="sortAttribute" display-name-key="Sort By" description-key="Sort suggestions by attribute name with direction (asc/desc). Default: the Primary Name Attribute of the associated table ascending. Ex: temp_name or temp_name desc" of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="itemLimit" display-name-key="Item Limit" description-key="Maximum number of selected items" of-type="Whole.None" usage="input" required="false" />
     <!--
       Property node's of-type attribute can be of-type-group attribute.
       Example:

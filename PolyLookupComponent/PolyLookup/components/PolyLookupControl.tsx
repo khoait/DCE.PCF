@@ -32,6 +32,7 @@ export interface PolyLookupProps {
   relationshipType: RelationshipTypeEnum;
   clientUrl: string;
   sortBy?: string;
+  itemLimit?: number;
   pageSize?: number;
   disabled?: boolean;
   onChange?: (value: string | undefined) => void;
@@ -48,6 +49,7 @@ export const Body = ({
   relationshipType,
   clientUrl,
   sortBy,
+  itemLimit,
   pageSize,
   disabled,
   onChange,
@@ -193,33 +195,39 @@ export const Body = ({
     },
   });
 
-  const filterSuggestions = async (filterText: string, selectedTag?: ITag[]): Promise<ITag[]> => {
-    if (!filterText) return [];
+  const filterSuggestions = useCallback(
+    async (filterText: string, selectedTag?: ITag[]): Promise<ITag[]> => {
+      if (!filterText) return [];
 
-    const results = await filterQuery.mutateAsync(filterText);
+      const results = await filterQuery.mutateAsync(filterText);
 
-    return (
-      results.map(
-        (i) =>
-          ({
-            key: i[associatedTableDefinition?.PrimaryIdAttribute ?? ""],
-            name: i[associatedTableDefinition?.PrimaryNameAttribute ?? ""],
-          } as ITag)
-      ) ?? []
-    );
-  };
+      return (
+        results.map(
+          (i) =>
+            ({
+              key: i[associatedTableDefinition?.PrimaryIdAttribute ?? ""],
+              name: i[associatedTableDefinition?.PrimaryNameAttribute ?? ""],
+            } as ITag)
+        ) ?? []
+      );
+    },
+    [associatedTableDefinition?.EntitySetName]
+  );
 
-  const showAllSuggestions = async (selectedTags?: ITag[]): Promise<ITag[]> => {
-    return (
-      suggestionItems?.map(
-        (i) =>
-          ({
-            key: i[associatedTableDefinition?.PrimaryIdAttribute ?? ""] ?? "",
-            name: i[associatedTableDefinition?.PrimaryNameAttribute ?? ""] ?? "",
-          } as ITag)
-      ) ?? []
-    );
-  };
+  const showAllSuggestions = useCallback(
+    async (selectedTags?: ITag[]): Promise<ITag[]> => {
+      return (
+        suggestionItems?.map(
+          (i) =>
+            ({
+              key: i[associatedTableDefinition?.PrimaryIdAttribute ?? ""] ?? "",
+              name: i[associatedTableDefinition?.PrimaryNameAttribute ?? ""] ?? "",
+            } as ITag)
+        ) ?? []
+      );
+    },
+    [associatedTableDefinition?.PrimaryIdAttribute]
+  );
 
   const onPickerChange = useCallback(
     (selectedTags?: ITag[]): void => {
@@ -242,15 +250,18 @@ export const Body = ({
         onChange(output);
       }
     },
-    [selectedItems]
+    [associatedTableDefinition?.PrimaryIdAttribute, onChange]
   );
 
-  const onItemSelected = (item?: ITag): ITag | null => {
-    if (item && !selectedItems?.some((i) => i[associatedTableDefinition?.PrimaryIdAttribute ?? ""] === item.key)) {
-      return item;
-    }
-    return null;
-  };
+  const onItemSelected = useCallback(
+    (item?: ITag): ITag | null => {
+      if (item && !selectedItems?.some((i) => i[associatedTableDefinition?.PrimaryIdAttribute ?? ""] === item.key)) {
+        return item;
+      }
+      return null;
+    },
+    [associatedTableDefinition?.PrimaryIdAttribute]
+  );
 
   const isDataLoading =
     isLoadingRelationshipDefinition ||
@@ -292,6 +303,7 @@ export const Body = ({
           ? ""
           : `Select ${associatedTableDefinition?.DisplayCollectionName.UserLocalizedLabel.Label ?? "an item"}`,
       }}
+      itemLimit={itemLimit}
     />
   );
 };
