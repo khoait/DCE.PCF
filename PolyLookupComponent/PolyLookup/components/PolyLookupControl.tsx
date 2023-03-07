@@ -41,7 +41,8 @@ export interface PolyLookupProps {
   onQuickCreate?: (
     entityName: string | undefined,
     primaryAttribute: string | undefined,
-    value: string | undefined
+    value: string | undefined,
+    useQuickCreateForm: boolean | undefined
   ) => Promise<string | undefined>;
 }
 
@@ -277,7 +278,12 @@ export const Body = ({
 
   const onCreateNew = (input: string): ValidationState => {
     if (onQuickCreate) {
-      onQuickCreate(associatedTableDefinition?.LogicalName, associatedTableDefinition?.PrimaryNameAttribute, input)
+      onQuickCreate(
+        associatedTableDefinition?.LogicalName,
+        associatedTableDefinition?.PrimaryNameAttribute,
+        input,
+        associatedTableDefinition?.IsQuickCreateEnabled
+      )
         .then((result) => {
           if (result) {
             associateQuery.mutate(result);

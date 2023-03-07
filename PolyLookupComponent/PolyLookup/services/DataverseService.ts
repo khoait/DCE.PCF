@@ -45,6 +45,7 @@ export interface IEntityDefinition {
       Label: string;
     };
   };
+  IsQuickCreateEnabled: boolean;
 }
 
 const nToNColumns = [
@@ -64,6 +65,7 @@ const tableDefinitionColumns = [
   "PrimaryNameAttribute",
   "EntitySetName",
   "DisplayCollectionName",
+  "IsQuickCreateEnabled",
 ];
 
 const apiVersion = "9.2";

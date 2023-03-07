@@ -77,34 +77,38 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
   public onQuickCreate = async (
     entityName: string | undefined,
     primaryAttribute: string | undefined,
-    value: string | undefined
+    value: string | undefined,
+    useQuickCreateForm: boolean | undefined
   ) => {
     if (entityName && primaryAttribute) {
-      var result = await this.context.navigation.navigateTo(
-        {
-          pageType: "entityrecord",
-          entityName: entityName,
-          data: {
-            [primaryAttribute]: value ?? "",
+      let result: ComponentFramework.NavigationApi.OpenFormSuccessResponse;
+      if (useQuickCreateForm) {
+        result = await this.context.navigation.openForm(
+          {
+            entityName: entityName,
+            useQuickCreateForm: true,
           },
-        },
-        {
-          target: 2,
-          height: { value: 80, unit: "%" },
-          width: { value: 70, unit: "%" },
-          position: 1,
-        }
-      );
-
-      // const result = await this.context.navigation.openForm(
-      //   {
-      //     entityName: entityName,
-      //     useQuickCreateForm: true,
-      //   },
-      //   {
-      //     [primaryAttribute]: value ?? "",
-      //   }
-      // );
+          {
+            [primaryAttribute]: value ?? "",
+          }
+        );
+      } else {
+        result = await this.context.navigation.navigateTo(
+          {
+            pageType: "entityrecord",
+            entityName: entityName,
+            data: {
+              [primaryAttribute]: value ?? "",
+            },
+          },
+          {
+            target: 2,
+            height: { value: 80, unit: "%" },
+            width: { value: 70, unit: "%" },
+            position: 1,
+          }
+        );
+      }
 
       if (result?.savedEntityReference?.length) {
         return result.savedEntityReference[0].id;
