@@ -206,7 +206,9 @@ export function associateRecord(
   return axios.post(
     `/api/data/v${apiVersion}/${entitySetName}(${currentRecordId})/${relationshipName}/$ref`,
     {
-      "@odata.id": `${clientUrl}/api/data/v${apiVersion}/${associatedEntitySet}(${associateRecordId})`,
+      "@odata.id": `${clientUrl}/api/data/v${apiVersion}/${associatedEntitySet}(${associateRecordId
+        .replace("{", "")
+        .replace("}", "")})`,
     },
     {
       headers: {

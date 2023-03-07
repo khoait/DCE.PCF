@@ -1,11 +1,13 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback } from "react";
 import {
+  Autofill,
   IBasePickerStyles,
   IBasePickerSuggestionsProps,
   ITag,
   ITagItemProps,
   TagPicker,
   TagPickerBase,
+  ValidationState,
 } from "@fluentui/react";
 import { QueryClient, QueryClientProvider, useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -36,11 +38,12 @@ export interface PolyLookupProps {
   pageSize?: number;
   disabled?: boolean;
   onChange?: (value: string | undefined) => void;
+  onQuickCreate?: (
+    entityName: string | undefined,
+    primaryAttribute: string | undefined,
+    value: string | undefined
+  ) => Promise<string | undefined>;
 }
-
-const pickerSuggestionsProps: IBasePickerSuggestionsProps = {
-  noResultsFoundText: "No records found",
-};
 
 export const Body = ({
   currentTable,
@@ -53,6 +56,7 @@ export const Body = ({
   pageSize,
   disabled,
   onChange,
+  onQuickCreate,
 }: PolyLookupProps) => {
   const pickerStyles: Partial<IBasePickerStyles> = {
     root: { backgroundColor: "#fff", width: "100%" },
@@ -65,6 +69,14 @@ export const Body = ({
       "&:hover:after": { backgroundColor: disabled ? "rgba(50, 50, 50, 0.1)" : "transparent" },
     },
   };
+
+  const pickerSuggestionsProps: IBasePickerSuggestionsProps = {
+    noResultsFoundText: "No records found",
+    forceResolveText: "Quick Create",
+    showForceResolve: () => onQuickCreate !== undefined,
+  };
+
+  const pickerRef = React.useRef<TagPickerBase>(null);
 
   const { data: relationshipDefinition, isLoading: isLoadingRelationshipDefinition } = useQuery({
     queryKey: ["relationshipDefinition", { currentTable, relationshipName }],
@@ -152,7 +164,7 @@ export const Body = ({
         associatedTableDefinition?.PrimaryIdAttribute,
         associatedTableDefinition?.PrimaryNameAttribute
       ),
-    enabled: !!intersectTableDefinition,
+    enabled: !!intersectTableDefinition?.EntitySetName && !!associatedTableDefinition?.EntitySetName,
   });
 
   if (isSuccess && onChange) {
@@ -226,7 +238,7 @@ export const Body = ({
         ) ?? []
       );
     },
-    [associatedTableDefinition?.PrimaryIdAttribute]
+    [suggestionItems, associatedTableDefinition?.PrimaryIdAttribute]
   );
 
   const onPickerChange = useCallback(
@@ -245,12 +257,12 @@ export const Body = ({
       added?.forEach((id) => associateQuery.mutate(id as string));
       removed?.forEach((id) => disassociateQuery.mutate(id as string));
 
-      const output = selectedTags?.map((t) => t.name).join(", ");
       if (onChange) {
+        const output = selectedTags?.map((t) => t.name).join(", ");
         onChange(output);
       }
     },
-    [associatedTableDefinition?.PrimaryIdAttribute, onChange]
+    [selectedItems, associatedTableDefinition?.PrimaryIdAttribute, onChange]
   );
 
   const onItemSelected = useCallback(
@@ -260,8 +272,26 @@ export const Body = ({
       }
       return null;
     },
-    [associatedTableDefinition?.PrimaryIdAttribute]
+    [selectedItems, associatedTableDefinition?.PrimaryIdAttribute]
   );
+
+  const onCreateNew = (input: string): ValidationState => {
+    if (onQuickCreate) {
+      onQuickCreate(associatedTableDefinition?.LogicalName, associatedTableDefinition?.PrimaryNameAttribute, input)
+        .then((result) => {
+          if (result) {
+            associateQuery.mutate(result);
+            // TODO: fix this hack
+            // @ts-ignore
+            pickerRef.current.input.current?._updateValue("");
+          }
+        })
+        .catch((err) => {
+          console.log(err);
+        });
+    }
+    return ValidationState.invalid;
+  };
 
   const isDataLoading =
     isLoadingRelationshipDefinition ||
@@ -273,6 +303,7 @@ export const Body = ({
 
   return (
     <TagPicker
+      ref={pickerRef}
       selectedItems={selectedItems?.map(
         (i) =>
           ({
@@ -304,6 +335,7 @@ export const Body = ({
           : `Select ${associatedTableDefinition?.DisplayCollectionName.UserLocalizedLabel.Label ?? "an item"}`,
       }}
       itemLimit={itemLimit}
+      onValidateInput={onCreateNew}
     />
   );
 };

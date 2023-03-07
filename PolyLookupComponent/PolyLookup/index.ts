@@ -1,26 +1,13 @@
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import * as React from "react";
 import PolyLookupControl, { PolyLookupProps, RelationshipTypeEnum } from "./components/PolyLookupControl";
-
-interface IExtendedUserSettings extends ComponentFramework.UserSettings {
-  pagingLimit: number;
-}
-
-interface IExtendedContext extends ComponentFramework.Context<IInputs> {
-  page: {
-    appId: string;
-    entityTypeName: string;
-    entityId: string;
-    isPageReadOnly: boolean;
-    getClientUrl: () => string;
-  };
-  userSettings: IExtendedUserSettings;
-}
+import { IExtendedContext } from "./types/extendedContext";
 
 export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOutputs> {
   private theComponent: ComponentFramework.ReactControl<IInputs, IOutputs>;
   private notifyOutputChanged: () => void;
-  output: string | undefined;
+  private output: string | undefined;
+  private context: IExtendedContext;
 
   /**
    * Empty constructor.
@@ -34,12 +21,9 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
    * @param notifyOutputChanged A callback method to alert the framework that the control has new outputs ready to be retrieved asynchronously.
    * @param state A piece of data that persists in one session for a single user. Can be set at any point in a controls life cycle by calling 'setControlState' in the Mode interface.
    */
-  public init(
-    context: ComponentFramework.Context<IInputs>,
-    notifyOutputChanged: () => void,
-    state: ComponentFramework.Dictionary
-  ): void {
+  public init(context: IExtendedContext, notifyOutputChanged: () => void, state: ComponentFramework.Dictionary): void {
     this.notifyOutputChanged = notifyOutputChanged;
+    this.context = context;
   }
 
   /**
@@ -48,6 +32,8 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
    * @returns ReactElement root react element for the control
    */
   public updateView(context: IExtendedContext): React.ReactElement {
+    this.context = context;
+
     const props: PolyLookupProps = {
       currentTable: context.page.entityTypeName,
       currentRecordId: context.page.entityId,
@@ -60,6 +46,7 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
       pageSize: context.userSettings.pagingLimit ?? undefined,
       disabled: context.mode.isControlDisabled,
       onChange: context.parameters.outputSelected.raw === "1" ? this.onLookupChange : undefined,
+      onQuickCreate: context.parameters.allowQuickCreate.raw === "1" ? this.onQuickCreate : undefined,
     };
     return React.createElement(PolyLookupControl, props);
   }
@@ -85,5 +72,45 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
   public onLookupChange = (value: string | undefined) => {
     this.output = value;
     this.notifyOutputChanged();
+  };
+
+  public onQuickCreate = async (
+    entityName: string | undefined,
+    primaryAttribute: string | undefined,
+    value: string | undefined
+  ) => {
+    if (entityName && primaryAttribute) {
+      var result = await this.context.navigation.navigateTo(
+        {
+          pageType: "entityrecord",
+          entityName: entityName,
+          data: {
+            [primaryAttribute]: value ?? "",
+          },
+        },
+        {
+          target: 2,
+          height: { value: 80, unit: "%" },
+          width: { value: 70, unit: "%" },
+          position: 1,
+        }
+      );
+
+      // const result = await this.context.navigation.openForm(
+      //   {
+      //     entityName: entityName,
+      //     useQuickCreateForm: true,
+      //   },
+      //   {
+      //     [primaryAttribute]: value ?? "",
+      //   }
+      // );
+
+      if (result?.savedEntityReference?.length) {
+        return result.savedEntityReference[0].id;
+      }
+    }
+
+    return undefined;
   };
 }
