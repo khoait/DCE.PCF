@@ -45,6 +45,7 @@ export interface IEntityDefinition {
       Label: string;
     };
   };
+  IsQuickCreateEnabled: boolean;
 }
 
 const nToNColumns = [
@@ -64,6 +65,7 @@ const tableDefinitionColumns = [
   "PrimaryNameAttribute",
   "EntitySetName",
   "DisplayCollectionName",
+  "IsQuickCreateEnabled",
 ];
 
 const apiVersion = "9.2";
@@ -206,7 +208,9 @@ export function associateRecord(
   return axios.post(
     `/api/data/v${apiVersion}/${entitySetName}(${currentRecordId})/${relationshipName}/$ref`,
     {
-      "@odata.id": `${clientUrl}/api/data/v${apiVersion}/${associatedEntitySet}(${associateRecordId})`,
+      "@odata.id": `${clientUrl}/api/data/v${apiVersion}/${associatedEntitySet}(${associateRecordId
+        .replace("{", "")
+        .replace("}", "")})`,
     },
     {
       headers: {
