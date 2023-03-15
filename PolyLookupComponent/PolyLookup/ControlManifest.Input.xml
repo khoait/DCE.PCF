@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DCEPCF" constructor="PolyLookup" version="1.0.12" display-name-key="PolyLookup" description-key="Multi-select lookup supporting different type of many-to-many relationships. v1.0.10" control-type="virtual" >
+  <control namespace="DCEPCF" constructor="PolyLookup" version="1.0.13" display-name-key="PolyLookup" description-key="Multi-select lookup supporting different type of many-to-many relationships. v1.0.10" control-type="virtual" >
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
     Example1:
@@ -25,11 +25,11 @@
       <value name="connection" display-name-key="Connection">2</value>
     </property>
     <property name="relationship" display-name-key="Relationship Name" description-key="The relationship schema name to the associated table" of-type="SingleLine.Text" usage="input" required="true" />
+    <property name="lookupView" display-name-key="Lookup View" description-key="The view name for the suggestion list when searching. Use system Lookup View when empty or not found" of-type="SingleLine.Text" usage="input" required="false" />
     <property name="outputSelected" display-name-key="Output Selected" description-key="Whether output selected records as text to the Bound Field" of-type="Enum" usage="input" required="true" >
       <value name="false" display-name-key="No">0</value>
       <value name="true" display-name-key="Yes">1</value>
-    </property>
-    <property name="sortAttribute" display-name-key="Sort By" description-key="Sort suggestions by attribute name with direction (asc/desc). Default: the Primary Name Attribute of the associated table ascending. Ex: temp_name or temp_name desc" of-type="SingleLine.Text" usage="input" required="false" />
+    </property>    
     <property name="itemLimit" display-name-key="Item Limit" description-key="Maximum number of selected items" of-type="Whole.None" usage="input" required="false" />
     <property name="allowQuickCreate" display-name-key="Allow Quick Create" description-key="Enable/disable the create button to quickly create a new option" of-type="Enum" usage="input" required="false" >
       <value name="false" display-name-key="No">0</value>

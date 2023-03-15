@@ -1,6 +1,5 @@
 import React, { useCallback } from "react";
 import {
-  Autofill,
   IBasePickerStyles,
   IBasePickerSuggestionsProps,
   ITag,
@@ -13,13 +12,20 @@ import { QueryClient, QueryClientProvider, useMutation, useQuery } from "@tansta
 import {
   associateRecord,
   disassociateRecord,
-  getEntityDefinition,
-  getManytoManyRelationShipDefinition,
+  getCurrentRecord,
+  getMetadata,
   retrieveAssociatedRecords,
-  retrieveMultiple,
+  retrieveMultipleFetch,
 } from "../services/DataverseService";
 
+//TODO: fix this hack
+import MainHandlebars from "handlebars";
+import * as RuntimeHandlebars from "handlebars/runtime";
+const Handlebars = Object.assign(MainHandlebars, RuntimeHandlebars);
+
 const queryClient = new QueryClient();
+const parser = new DOMParser();
+const serializer = new XMLSerializer();
 
 export enum RelationshipTypeEnum {
   ManyToMany,
@@ -33,7 +39,7 @@ export interface PolyLookupProps {
   relationshipName: string;
   relationshipType: RelationshipTypeEnum;
   clientUrl: string;
-  sortBy?: string;
+  lookupView?: string;
   itemLimit?: number;
   pageSize?: number;
   disabled?: boolean;
@@ -52,7 +58,7 @@ export const Body = ({
   relationshipName,
   relationshipType,
   clientUrl,
-  sortBy,
+  lookupView,
   itemLimit,
   pageSize,
   disabled,
@@ -79,70 +85,48 @@ export const Body = ({
 
   const pickerRef = React.useRef<TagPickerBase>(null);
 
-  const { data: relationshipDefinition, isLoading: isLoadingRelationshipDefinition } = useQuery({
-    queryKey: ["relationshipDefinition", { currentTable, relationshipName }],
-    queryFn: () => getManytoManyRelationShipDefinition(currentTable, relationshipName),
+  const {
+    data: metadata,
+    isLoading: isLoadingMetadata,
+    isSuccess: isLoadingMetadataSuccess,
+  } = useQuery({
+    queryKey: ["metadata", { currentTable, relationshipName }],
+    queryFn: () => getMetadata(currentTable, relationshipName, lookupView),
   });
 
-  const associatedTable =
-    relationshipDefinition?.Entity1LogicalName === currentTable
-      ? relationshipDefinition?.Entity2LogicalName
-      : relationshipDefinition?.Entity1LogicalName;
+  const associatedTable = metadata?.associatedEntity.LogicalName ?? "";
 
   const associatedIntesectAttribute =
-    relationshipDefinition?.Entity1LogicalName === currentTable
-      ? relationshipDefinition?.Entity2IntersectAttribute
-      : relationshipDefinition?.Entity1IntersectAttribute;
+    metadata?.nnRelationship.Entity1LogicalName === currentTable
+      ? metadata?.nnRelationship.Entity2IntersectAttribute
+      : metadata?.nnRelationship.Entity1IntersectAttribute;
 
   const currentIntesectAttribute =
-    relationshipDefinition?.Entity1LogicalName === currentTable
-      ? relationshipDefinition?.Entity1IntersectAttribute
-      : relationshipDefinition?.Entity2IntersectAttribute;
+    metadata?.nnRelationship.Entity1LogicalName === currentTable
+      ? metadata?.nnRelationship?.Entity1IntersectAttribute
+      : metadata?.nnRelationship?.Entity2IntersectAttribute;
 
-  // get current table definition
-  const { data: currentTableDefinition, isLoading: isLoadingCurrentTableDefinition } = useQuery({
-    queryKey: ["currentTableDefinition", currentTable],
-    queryFn: () => getEntityDefinition(currentTable),
-    enabled: !!relationshipDefinition,
-  });
+  const associatedTableSetName = metadata?.associatedEntity.EntitySetName ?? "";
+  const associatedFetchXml = metadata?.associatedView.fetchxml;
+  const fetchXmlTemplate = Handlebars.compile(associatedFetchXml ?? "");
 
-  // get associated table definition
-  const {
-    data: associatedTableDefinition,
-    isLoading: isLoadingAssociatedTableDefinition,
-    isSuccess: isAssociatedTableDefinitionSuccess,
-  } = useQuery({
-    queryKey: ["associatedTableDefinition", associatedTable],
-    queryFn: () => getEntityDefinition(associatedTable),
-    enabled: !!relationshipDefinition,
-  });
-
-  const associatedTableSetName = associatedTableDefinition?.EntitySetName ?? "";
-
-  if (isAssociatedTableDefinitionSuccess && associatedTableDefinition) {
-    pickerSuggestionsProps.suggestionsHeaderText = `Suggested ${associatedTableDefinition?.DisplayCollectionName.UserLocalizedLabel.Label}`;
-    pickerSuggestionsProps.noResultsFoundText = `No ${associatedTableDefinition?.DisplayCollectionName.UserLocalizedLabel.Label} found`;
+  if (metadata && isLoadingMetadataSuccess) {
+    pickerSuggestionsProps.suggestionsHeaderText = `Suggested ${metadata.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label}`;
+    pickerSuggestionsProps.noResultsFoundText = `No ${metadata.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label} found`;
   }
 
-  // get top 20 suggestions from associated table
+  // get top 50 suggestions from associated table
   const { data: suggestionItems, isLoading: isLoadingSuggestionItems } = useQuery({
     queryKey: ["suggestionItems", associatedTable],
-    queryFn: () =>
-      retrieveMultiple(
-        associatedTableSetName,
-        [associatedTableDefinition?.PrimaryIdAttribute, associatedTableDefinition?.PrimaryNameAttribute],
-        undefined,
-        pageSize ?? 20,
-        sortBy
-      ),
-    enabled: !!associatedTableDefinition,
-  });
-
-  // get intersect table definition
-  const { data: intersectTableDefinition, isLoading: isLoadingIntersectTableDefinition } = useQuery({
-    queryKey: ["intersectTableDefinition", relationshipDefinition?.IntersectEntityName],
-    queryFn: () => getEntityDefinition(relationshipDefinition?.IntersectEntityName),
-    enabled: !!relationshipDefinition?.IntersectEntityName,
+    queryFn: () => {
+      let fetchXml = metadata?.associatedView.fetchxml ?? "";
+      if (lookupView) {
+        const currentRecord = getCurrentRecord();
+        fetchXml = fetchXmlTemplate(currentRecord);
+      }
+      return retrieveMultipleFetch(associatedTableSetName, fetchXml, 1, pageSize);
+    },
+    enabled: !!metadata?.associatedView.fetchxml && !!associatedTableSetName,
   });
 
   // get selected items
@@ -156,30 +140,52 @@ export const Body = ({
     queryFn: () =>
       retrieveAssociatedRecords(
         currentRecordId,
-        intersectTableDefinition?.LogicalName,
-        intersectTableDefinition?.EntitySetName,
-        intersectTableDefinition?.PrimaryIdAttribute,
+        metadata?.intersectEntity.LogicalName,
+        metadata?.intersectEntity.EntitySetName,
+        metadata?.intersectEntity.PrimaryIdAttribute,
         currentIntesectAttribute,
         associatedIntesectAttribute,
         associatedTable,
-        associatedTableDefinition?.PrimaryIdAttribute,
-        associatedTableDefinition?.PrimaryNameAttribute
+        metadata?.associatedEntity.PrimaryIdAttribute,
+        metadata?.associatedEntity.PrimaryNameAttribute
       ),
-    enabled: !!intersectTableDefinition?.EntitySetName && !!associatedTableDefinition?.EntitySetName,
+    enabled: !!metadata?.intersectEntity.EntitySetName && !!metadata?.associatedEntity.EntitySetName,
   });
 
   if (isSuccess && onChange) {
-    onChange(selectedItems?.map((i) => i[associatedTableDefinition?.PrimaryNameAttribute ?? ""] as string).join(", "));
+    onChange(selectedItems?.map((i) => i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""] as string).join(", "));
   }
 
   // filter query
   const filterQuery = useMutation({
     mutationFn: (searchText: string) => {
-      return retrieveMultiple(
-        associatedTableSetName,
-        [associatedTableDefinition?.PrimaryIdAttribute, associatedTableDefinition?.PrimaryNameAttribute],
-        `startswith(${associatedTableDefinition?.PrimaryNameAttribute}, '${searchText}')`
-      );
+      let fetchXml = metadata?.associatedView.fetchxml ?? "";
+      if (!lookupView && metadata?.associatedView.querytype === 64) {
+        // if lookup view is not specified and using default lookup fiew,
+        // add filter condition to fetchxml to support search
+        const doc = parser.parseFromString(fetchXml, "application/xml");
+        const entities = doc.documentElement.getElementsByTagName("entity");
+        for (let i = 0; i < entities.length; i++) {
+          const entity = entities[i];
+          if (entity.getAttribute("name") === metadata?.associatedEntity.LogicalName) {
+            const filter = doc.createElement("filter");
+            const condition = doc.createElement("condition");
+            condition.setAttribute("attribute", metadata?.associatedEntity.PrimaryNameAttribute ?? "");
+            condition.setAttribute("operator", "like");
+            condition.setAttribute("value", `%${searchText}%`);
+            filter.appendChild(condition);
+            entity.appendChild(filter);
+          }
+        }
+        fetchXml = serializer.serializeToString(doc);
+      } else {
+        const currentRecord = getCurrentRecord();
+        fetchXml = fetchXmlTemplate({
+          ...currentRecord,
+          PolyLookupSearch: searchText,
+        });
+      }
+      return retrieveMultipleFetch(associatedTableSetName, fetchXml, 1, pageSize);
     },
   });
 
@@ -187,9 +193,9 @@ export const Body = ({
   const associateQuery = useMutation({
     mutationFn: (id: string) =>
       associateRecord(
-        currentTableDefinition?.EntitySetName,
+        metadata?.currentEntity.EntitySetName,
         currentRecordId,
-        associatedTableDefinition?.EntitySetName,
+        metadata?.associatedEntity?.EntitySetName,
         id,
         relationshipName,
         clientUrl
@@ -202,7 +208,7 @@ export const Body = ({
   // disassociate query
   const disassociateQuery = useMutation({
     mutationFn: (id: string) =>
-      disassociateRecord(currentTableDefinition?.EntitySetName, currentRecordId, relationshipName, id),
+      disassociateRecord(metadata?.currentEntity?.EntitySetName, currentRecordId, relationshipName, id),
     onSuccess: (data, variables, context) => {
       selectedItemsRefetch();
     },
@@ -218,13 +224,13 @@ export const Body = ({
         results.map(
           (i) =>
             ({
-              key: i[associatedTableDefinition?.PrimaryIdAttribute ?? ""],
-              name: i[associatedTableDefinition?.PrimaryNameAttribute ?? ""],
+              key: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""],
+              name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""],
             } as ITag)
         ) ?? []
       );
     },
-    [associatedTableDefinition?.EntitySetName]
+    [metadata?.associatedEntity.EntitySetName]
   );
 
   const showAllSuggestions = useCallback(
@@ -233,13 +239,13 @@ export const Body = ({
         suggestionItems?.map(
           (i) =>
             ({
-              key: i[associatedTableDefinition?.PrimaryIdAttribute ?? ""] ?? "",
-              name: i[associatedTableDefinition?.PrimaryNameAttribute ?? ""] ?? "",
+              key: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ?? "",
+              name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""] ?? "",
             } as ITag)
         ) ?? []
       );
     },
-    [suggestionItems, associatedTableDefinition?.PrimaryIdAttribute]
+    [suggestionItems, metadata?.associatedEntity.PrimaryIdAttribute]
   );
 
   const onPickerChange = useCallback(
@@ -248,10 +254,10 @@ export const Body = ({
         ?.filter(
           (i) =>
             !selectedTags?.some(
-              (t) => (t.key as string)?.split(":")?.at(1) === i[associatedTableDefinition?.PrimaryIdAttribute ?? ""]
+              (t) => (t.key as string)?.split(":")?.at(1) === i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
             )
         )
-        .map((i) => i[associatedTableDefinition?.PrimaryIdAttribute ?? ""]);
+        .map((i) => i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]);
 
       const added = selectedTags?.filter((t) => (t.key as string).indexOf(":") === -1).map((t) => t.key);
 
@@ -263,26 +269,26 @@ export const Body = ({
         onChange(output);
       }
     },
-    [selectedItems, associatedTableDefinition?.PrimaryIdAttribute, onChange]
+    [selectedItems, metadata?.associatedEntity.PrimaryIdAttribute, onChange]
   );
 
   const onItemSelected = useCallback(
     (item?: ITag): ITag | null => {
-      if (item && !selectedItems?.some((i) => i[associatedTableDefinition?.PrimaryIdAttribute ?? ""] === item.key)) {
+      if (item && !selectedItems?.some((i) => i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] === item.key)) {
         return item;
       }
       return null;
     },
-    [selectedItems, associatedTableDefinition?.PrimaryIdAttribute]
+    [selectedItems, metadata?.associatedEntity.PrimaryIdAttribute]
   );
 
   const onCreateNew = (input: string): ValidationState => {
     if (onQuickCreate) {
       onQuickCreate(
-        associatedTableDefinition?.LogicalName,
-        associatedTableDefinition?.PrimaryNameAttribute,
+        metadata?.associatedEntity.LogicalName,
+        metadata?.associatedEntity.PrimaryNameAttribute,
         input,
-        associatedTableDefinition?.IsQuickCreateEnabled
+        metadata?.associatedEntity.IsQuickCreateEnabled
       )
         .then((result) => {
           if (result) {
@@ -299,13 +305,7 @@ export const Body = ({
     return ValidationState.invalid;
   };
 
-  const isDataLoading =
-    isLoadingRelationshipDefinition ||
-    isLoadingCurrentTableDefinition ||
-    isLoadingAssociatedTableDefinition ||
-    isLoadingIntersectTableDefinition ||
-    isLoadingSuggestionItems ||
-    isLoadingSelectedItems;
+  const isDataLoading = isLoadingMetadata || isLoadingSuggestionItems || isLoadingSelectedItems;
 
   return (
     <TagPicker
@@ -313,10 +313,10 @@ export const Body = ({
       selectedItems={selectedItems?.map(
         (i) =>
           ({
-            key: `${i[intersectTableDefinition?.PrimaryIdAttribute ?? ""]}:${
-              i[associatedTableDefinition?.PrimaryIdAttribute ?? ""]
+            key: `${i[metadata?.intersectEntity.PrimaryIdAttribute ?? ""]}:${
+              i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
             }`,
-            name: i[associatedTableDefinition?.PrimaryNameAttribute ?? ""],
+            name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""],
           } as ITag)
       )}
       onResolveSuggestions={filterSuggestions}
@@ -338,7 +338,7 @@ export const Body = ({
           ? "Loading"
           : selectedItems?.length || disabled
           ? ""
-          : `Select ${associatedTableDefinition?.DisplayCollectionName.UserLocalizedLabel.Label ?? "an item"}`,
+          : `Select ${metadata?.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label ?? "an item"}`,
       }}
       itemLimit={itemLimit}
       onValidateInput={onCreateNew}
