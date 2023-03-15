@@ -48,6 +48,57 @@ export interface IEntityDefinition {
   IsQuickCreateEnabled: boolean;
 }
 
+interface IViewRow {
+  Name: string;
+  Id: string;
+  Cells: IViewCell[];
+  MultiObjectIdField: string;
+  LayoutStyle: string;
+}
+
+interface IViewCell {
+  Name: string;
+  Width: number;
+  RelatedEntityName: string;
+  DisableMetaDataBinding: boolean;
+  LabelId: string;
+  IsHidden: boolean;
+  DisableSorting: boolean;
+  AddedBy: string;
+  Desc: string;
+  CellType: string;
+  ImageProviderWebresource: string;
+  ImageProviderFunctionName: string;
+}
+
+interface IViewLayout {
+  Name: string;
+  Object: number;
+  Rows: IViewRow[];
+  CustomControlDescriptions: [];
+  Jump: string;
+  Select: true;
+  Icon: true;
+  Preview: true;
+  IconRenderer: "";
+}
+
+export interface IViewDefinition {
+  savedqueryid: string;
+  name: string;
+  fetchxml: string;
+  layoutjson: IViewLayout;
+  querytype: number;
+}
+
+export interface IMetadata {
+  nnRelationship: IManyToManyRelationship;
+  currentEntity: IEntityDefinition;
+  intersectEntity: IEntityDefinition;
+  associatedEntity: IEntityDefinition;
+  associatedView: IViewDefinition;
+}
+
 const nToNColumns = [
   "SchemaName",
   "Entity1LogicalName",
@@ -67,6 +118,8 @@ const tableDefinitionColumns = [
   "DisplayCollectionName",
   "IsQuickCreateEnabled",
 ];
+
+const viewDefinitionColumns = ["savedqueryid", "name", "fetchxml", "layoutjson", "querytype"];
 
 const apiVersion = "9.2";
 
@@ -100,6 +153,61 @@ export function getEntityDefinition(entityName: string | undefined) {
         .then((res) => res.data);
 }
 
+export async function getViewDefinition(entityName: string | undefined, viewName: string | undefined) {
+  if (typeof entityName === "undefined") return Promise.reject(new Error("Invalid arguments"));
+
+  if (viewName) {
+    const result = await axios.get<{ value: IViewDefinition[] }>(`/api/data/v${apiVersion}/savedqueries`, {
+      params: {
+        $filter: `returnedtypecode eq '${entityName}' and name eq '${viewName}'`,
+        $select: viewDefinitionColumns.join(","),
+      },
+    });
+
+    if (result?.data.value?.length) {
+      return result.data.value[0];
+    }
+  }
+
+  const lookupResult = await axios.get<{ value: IViewDefinition[] }>(`/api/data/v${apiVersion}/savedqueries`, {
+    params: {
+      $filter: `returnedtypecode eq '${entityName}' and querytype eq 64`,
+      $select: viewDefinitionColumns.join(","),
+    },
+  });
+
+  return lookupResult.data.value[0];
+}
+
+export function getMetadata(
+  currentTable: string | undefined,
+  relationshipName: string | undefined,
+  associatedViewName: string | undefined
+): Promise<IMetadata> {
+  return typeof currentTable === "undefined" || typeof relationshipName === "undefined"
+    ? Promise.reject(new Error("Invalid arguments"))
+    : getManytoManyRelationShipDefinition(currentTable, relationshipName).then((nnRelationship) => {
+        const associatedEntity =
+          nnRelationship.Entity1LogicalName === currentTable
+            ? nnRelationship.Entity2LogicalName
+            : nnRelationship.Entity1LogicalName;
+        return Promise.all([
+          getEntityDefinition(currentTable),
+          getEntityDefinition(nnRelationship.IntersectEntityName),
+          getEntityDefinition(associatedEntity),
+          getViewDefinition(associatedEntity, associatedViewName),
+        ]).then(([currentEntity, intersectEntity, associatedEntity, associatedView]) => {
+          return {
+            nnRelationship,
+            currentEntity,
+            intersectEntity,
+            associatedEntity,
+            associatedView,
+          };
+        });
+      });
+}
+
 export function retrieveMultiple(
   entitySetName: string | undefined,
   columns: Array<string | undefined> | undefined,
@@ -124,16 +232,32 @@ export function retrieveMultiple(
         .then((res) => res.data.value);
 }
 
-export function retrieveMultipleFetch(entitySetName: string | undefined, fetchXml: string | undefined) {
-  return typeof entitySetName === "undefined" || typeof fetchXml === "undefined"
-    ? Promise.reject(new Error("Invalid entity set name or fetchXml"))
-    : axios
-        .get<{ value: ComponentFramework.WebApi.Entity[] }>(`/api/data/v${apiVersion}/${entitySetName}`, {
-          params: {
-            fetchXml: encodeURIComponent(fetchXml),
-          },
-        })
-        .then((res) => res.data.value);
+export function retrieveMultipleFetch(
+  entitySetName: string | undefined,
+  fetchXml: string | undefined,
+  page?: number,
+  count?: number,
+  pagingCookies?: string
+) {
+  if (typeof entitySetName === "undefined" || typeof fetchXml === "undefined")
+    return Promise.reject(new Error("Invalid entity set name or fetchXml"));
+
+  const doc = new DOMParser().parseFromString(fetchXml, "application/xml");
+  doc.documentElement.setAttribute("page", page?.toString() ?? "1");
+  doc.documentElement.setAttribute("count", count?.toString() ?? "50");
+  if (pagingCookies) {
+    doc.documentElement.setAttribute("paging-cookie", pagingCookies);
+  }
+
+  const newFetchXml = new XMLSerializer().serializeToString(doc);
+
+  return axios
+    .get<{ value: ComponentFramework.WebApi.Entity[] }>(`/api/data/v${apiVersion}/${entitySetName}`, {
+      params: {
+        fetchXml: encodeURIComponent(newFetchXml),
+      },
+    })
+    .then((res) => res.data.value);
 }
 
 export async function retrieveAssociatedRecords(
@@ -250,5 +374,26 @@ export function disassociateRecord(
         "Content-Type": "application/json",
       },
     }
+  );
+}
+
+export function getCurrentRecord(): ComponentFramework.WebApi.Entity {
+  return Object.fromEntries(
+    /* global Xrm */
+    Xrm.Page.data.entity.attributes.get().map((attribute) => {
+      const attributeType = attribute.getAttributeType();
+      if (attributeType === "lookup") {
+        const lookupVal = (attribute as Xrm.Attributes.LookupAttribute).getValue()?.at(0);
+        if (lookupVal) {
+          lookupVal.id = lookupVal.id.replace("{", "").replace("}", "");
+        }
+
+        return [attribute.getName(), lookupVal];
+      } else if (attributeType === "datetime") {
+        return [attribute.getName(), (attribute as Xrm.Attributes.DateAttribute).getValue()?.toISOString()];
+      }
+
+      return [attribute.getName(), attribute.getValue()];
+    })
   );
 }
