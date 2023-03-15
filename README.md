@@ -36,4 +36,4 @@ I'll review your changes and work with you to merge them into the main repositor
 
 ### Git branches
 
-- **main**: This branch contains the latest stable release of the components.
+- **main**: This branch contains the latest features of the components. Please see [tags](https://github.com/khoait/DCE.PCF/tags) for version specific code
