@@ -27,7 +27,7 @@ Thanks for showing your interest in the repo. All contributions are most welcome
 - **Give feedback**: Please share your experience and ideas.
 - **Improve documentation**: Fix incomplete or missing docs, bad wording, examples or explanations.
 - **Contribute to the codebase**: Propose new features or identify problems via GitHub Issues, or find an existing issue that you are interested in and work on it!
-- **Sponsor my work**: If you find it helpful, please consider sponsoring me to keep me going 💪
+- **Sponsor my work**: If you find it helpful, please consider sponsoring the project to keep it going 💪
 
 If you'd like to contribute to the code, please follow these steps:
 
