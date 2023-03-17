@@ -1,5 +1,8 @@
 # 🚀 DynCRMExp Power Apps PCF Components Repository
 
+![PowerApps PCF](https://img.shields.io/badge/PowerApps%20PCF%20Components-742774?logo=powerapps&logoColor=white)
+[![Sponsor on Github](https://img.shields.io/badge/Sponsor%20my%20work-323330?logo=githubsponsors)](https://github.com/sponsors/khoait)
+
 This Github repository contains a collection of React-based components that provide extensive functionalities with consistent UI/UX to Power Apps using the Fluent UI Design Language. The components are designed to be easy to use and highly customizable, allowing you to quickly build powerful and visually appealing Power Apps.
 
 ## 📚 Components Documentation
@@ -20,10 +23,11 @@ Thanks for showing your interest in the repo. All contributions are most welcome
 
 ### Ways to contribute
 
-- **Improve documentation**: Fix incomplete or missing docs, bad wording, examples or explanations.
+- **Share**: Give it a star ⭐ and Share the repo with everyone who might be interested!
 - **Give feedback**: Please share your experience and ideas.
-- **Share**: Share the repo with everyone who might be interested!
+- **Improve documentation**: Fix incomplete or missing docs, bad wording, examples or explanations.
 - **Contribute to the codebase**: Propose new features or identify problems via GitHub Issues, or find an existing issue that you are interested in and work on it!
+- **Sponsor my work**: If you find it helpful, please consider sponsoring me to keep me going 💪
 
 If you'd like to contribute to the code, please follow these steps:
 
