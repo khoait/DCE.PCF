@@ -12,6 +12,7 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
   /**
    * Empty constructor.
    */
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   constructor() {}
 
   /**
