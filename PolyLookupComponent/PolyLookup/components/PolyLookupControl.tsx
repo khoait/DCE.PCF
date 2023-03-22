@@ -16,6 +16,9 @@ import {
   getMetadata,
   retrieveAssociatedRecords,
   retrieveMultipleFetch,
+  useMetadata,
+  useSelectedItems,
+  useSuggestions,
 } from "../services/DataverseService";
 
 //TODO: fix this hack
@@ -52,7 +55,7 @@ export interface PolyLookupProps {
   ) => Promise<string | undefined>;
 }
 
-export const Body = ({
+const Body = ({
   currentTable,
   currentRecordId,
   relationshipName,
@@ -89,70 +92,34 @@ export const Body = ({
     data: metadata,
     isLoading: isLoadingMetadata,
     isSuccess: isLoadingMetadataSuccess,
-  } = useQuery({
-    queryKey: ["metadata", { currentTable, relationshipName }],
-    queryFn: () => getMetadata(currentTable, relationshipName, lookupView),
-  });
-
-  const associatedTable = metadata?.associatedEntity.LogicalName ?? "";
-
-  const associatedIntesectAttribute =
-    metadata?.nnRelationship.Entity1LogicalName === currentTable
-      ? metadata?.nnRelationship.Entity2IntersectAttribute
-      : metadata?.nnRelationship.Entity1IntersectAttribute;
-
-  const currentIntesectAttribute =
-    metadata?.nnRelationship.Entity1LogicalName === currentTable
-      ? metadata?.nnRelationship?.Entity1IntersectAttribute
-      : metadata?.nnRelationship?.Entity2IntersectAttribute;
-
-  const associatedTableSetName = metadata?.associatedEntity.EntitySetName ?? "";
-  const associatedFetchXml = metadata?.associatedView.fetchxml;
-  const fetchXmlTemplate = Handlebars.compile(associatedFetchXml ?? "");
+  } = useMetadata(currentTable, relationshipName, lookupView);
 
   if (metadata && isLoadingMetadataSuccess) {
     pickerSuggestionsProps.suggestionsHeaderText = `Suggested ${metadata.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label}`;
     pickerSuggestionsProps.noResultsFoundText = `No ${metadata.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label} found`;
   }
 
+  const associatedTableSetName = metadata?.associatedEntity.EntitySetName ?? "";
+  const associatedFetchXml = metadata?.associatedView.fetchxml;
+
+  const fetchXmlTemplate = Handlebars.compile(associatedFetchXml ?? "");
+
   // get top 50 suggestions from associated table
-  const { data: suggestionItems, isLoading: isLoadingSuggestionItems } = useQuery({
-    queryKey: ["suggestionItems", associatedTable],
-    queryFn: () => {
-      let fetchXml = metadata?.associatedView.fetchxml ?? "";
-      if (lookupView) {
-        const currentRecord = getCurrentRecord();
-        fetchXml = fetchXmlTemplate(currentRecord);
-      }
-      return retrieveMultipleFetch(associatedTableSetName, fetchXml, 1, pageSize);
-    },
-    enabled: !!metadata?.associatedView.fetchxml && !!associatedTableSetName,
-  });
+  const { data: suggestions, isLoading: isLoadingSuggestions } = useSuggestions(
+    associatedTableSetName,
+    fetchXmlTemplate,
+    pageSize
+  );
 
   // get selected items
   const {
     data: selectedItems,
-    refetch: selectedItemsRefetch,
     isLoading: isLoadingSelectedItems,
-    isSuccess,
-  } = useQuery({
-    queryKey: ["selectedItems", { currentTable, relationshipName }],
-    queryFn: () =>
-      retrieveAssociatedRecords(
-        currentRecordId,
-        metadata?.intersectEntity.LogicalName,
-        metadata?.intersectEntity.EntitySetName,
-        metadata?.intersectEntity.PrimaryIdAttribute,
-        currentIntesectAttribute,
-        associatedIntesectAttribute,
-        associatedTable,
-        metadata?.associatedEntity.PrimaryIdAttribute,
-        metadata?.associatedEntity.PrimaryNameAttribute
-      ),
-    enabled: !!metadata?.intersectEntity.EntitySetName && !!metadata?.associatedEntity.EntitySetName,
-  });
+    isSuccess: isLoadingSelectedItemsSuccess,
+    refetch: selectedItemsRefetch,
+  } = useSelectedItems(currentTable, currentRecordId, relationshipName, metadata);
 
-  if (isSuccess && onChange) {
+  if (isLoadingSelectedItemsSuccess && onChange) {
     onChange(selectedItems?.map((i) => i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""] as string).join(", "));
   }
 
@@ -236,7 +203,7 @@ export const Body = ({
   const showAllSuggestions = useCallback(
     async (selectedTags?: ITag[]): Promise<ITag[]> => {
       return (
-        suggestionItems?.map(
+        suggestions?.map(
           (i) =>
             ({
               key: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ?? "",
@@ -245,7 +212,7 @@ export const Body = ({
         ) ?? []
       );
     },
-    [suggestionItems, metadata?.associatedEntity.PrimaryIdAttribute]
+    [suggestions, metadata?.associatedEntity.PrimaryIdAttribute]
   );
 
   const onPickerChange = useCallback(
@@ -294,6 +261,7 @@ export const Body = ({
           if (result) {
             associateQuery.mutate(result);
             // TODO: fix this hack
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
             pickerRef.current.input.current?._updateValue("");
           }
@@ -305,7 +273,7 @@ export const Body = ({
     return ValidationState.invalid;
   };
 
-  const isDataLoading = isLoadingMetadata || isLoadingSuggestionItems || isLoadingSelectedItems;
+  const isDataLoading = isLoadingMetadata || isLoadingSuggestions || isLoadingSelectedItems;
 
   return (
     <TagPicker

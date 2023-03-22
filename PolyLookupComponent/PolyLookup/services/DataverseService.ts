@@ -1,103 +1,6 @@
 import axios from "axios";
-
-type RelationshipType = "OneToManyRelationship" | "ManyToManyRelationship";
-
-export interface IRelationshipDefinition {
-  SchemaName?: string;
-  RelationshipType?: RelationshipType;
-}
-
-export interface IManyToManyRelationship {
-  SchemaName: string;
-  Entity1LogicalName: string;
-  Entity2LogicalName: string;
-  Entity1IntersectAttribute: string;
-  Entity2IntersectAttribute: string;
-  RelationshipType: string;
-  IntersectEntityName: string;
-}
-
-export interface IOneToManyRelationship extends IRelationshipDefinition {
-  ReferencedAttribute?: string;
-  ReferencedAttributeName?: string;
-  ReferencedEntity?: string;
-  ReferencedEntityName?: string;
-  ReferencingAttribute?: string;
-  ReferencingAttributeName?: string;
-  ReferencingEntity?: string;
-  ReferencingEntityName?: string;
-  ReferencedEntityNavigationPropertyName?: string;
-  ReferencingEntityNavigationPropertyName?: string;
-}
-
-export interface IEntityDefinition {
-  LogicalName: string;
-  DisplayName: {
-    UserLocalizedLabel: {
-      Label: string;
-    };
-  };
-  PrimaryIdAttribute: string;
-  PrimaryNameAttribute: string;
-  EntitySetName: string;
-  DisplayCollectionName: {
-    UserLocalizedLabel: {
-      Label: string;
-    };
-  };
-  IsQuickCreateEnabled: boolean;
-}
-
-interface IViewRow {
-  Name: string;
-  Id: string;
-  Cells: IViewCell[];
-  MultiObjectIdField: string;
-  LayoutStyle: string;
-}
-
-interface IViewCell {
-  Name: string;
-  Width: number;
-  RelatedEntityName: string;
-  DisableMetaDataBinding: boolean;
-  LabelId: string;
-  IsHidden: boolean;
-  DisableSorting: boolean;
-  AddedBy: string;
-  Desc: string;
-  CellType: string;
-  ImageProviderWebresource: string;
-  ImageProviderFunctionName: string;
-}
-
-interface IViewLayout {
-  Name: string;
-  Object: number;
-  Rows: IViewRow[];
-  CustomControlDescriptions: [];
-  Jump: string;
-  Select: true;
-  Icon: true;
-  Preview: true;
-  IconRenderer: "";
-}
-
-export interface IViewDefinition {
-  savedqueryid: string;
-  name: string;
-  fetchxml: string;
-  layoutjson: IViewLayout;
-  querytype: number;
-}
-
-export interface IMetadata {
-  nnRelationship: IManyToManyRelationship;
-  currentEntity: IEntityDefinition;
-  intersectEntity: IEntityDefinition;
-  associatedEntity: IEntityDefinition;
-  associatedView: IViewDefinition;
-}
+import { IEntityDefinition, IManyToManyRelationship, IMetadata, IViewDefinition } from "../types/metadata";
+import { useQuery } from "@tanstack/react-query";
 
 const nToNColumns = [
   "SchemaName",
@@ -122,6 +25,66 @@ const tableDefinitionColumns = [
 const viewDefinitionColumns = ["savedqueryid", "name", "fetchxml", "layoutjson", "querytype"];
 
 const apiVersion = "9.2";
+
+export function useMetadata(currentTable: string, relationshipName: string, lookupView: string | undefined) {
+  return useQuery({
+    queryKey: ["metadata", { currentTable, relationshipName, lookupView }],
+    queryFn: () => getMetadata(currentTable, relationshipName, lookupView),
+    enabled: !!currentTable && !!relationshipName,
+  });
+}
+
+export function useSuggestions(
+  associatedTableSetName: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  fetchXmlTemplate: HandlebarsTemplateDelegate<any>,
+  pageSize: number | undefined
+) {
+  return useQuery({
+    queryKey: ["suggestionItems", { associatedTableSetName, pageSize }],
+    queryFn: () => {
+      const currentRecord = getCurrentRecord();
+      const fetchXml = fetchXmlTemplate(currentRecord);
+      return retrieveMultipleFetch(associatedTableSetName, fetchXml, 1, pageSize);
+    },
+    enabled: !!associatedTableSetName,
+  });
+}
+
+export function useSelectedItems(
+  currentTable: string,
+  currentRecordId: string,
+  relationshipName: string,
+  metadata: IMetadata | undefined
+) {
+  const associatedTable = metadata?.associatedEntity.LogicalName ?? "";
+  const associatedIntesectAttribute =
+    metadata?.nnRelationship.Entity1LogicalName === currentTable
+      ? metadata?.nnRelationship.Entity2IntersectAttribute
+      : metadata?.nnRelationship.Entity1IntersectAttribute;
+
+  const currentIntesectAttribute =
+    metadata?.nnRelationship.Entity1LogicalName === currentTable
+      ? metadata?.nnRelationship?.Entity1IntersectAttribute
+      : metadata?.nnRelationship?.Entity2IntersectAttribute;
+
+  return useQuery({
+    queryKey: ["selectedItems", { currentTable, currentRecordId, relationshipName }],
+    queryFn: () =>
+      retrieveAssociatedRecords(
+        currentRecordId,
+        metadata?.intersectEntity.LogicalName,
+        metadata?.intersectEntity.EntitySetName,
+        metadata?.intersectEntity.PrimaryIdAttribute,
+        currentIntesectAttribute,
+        associatedIntesectAttribute,
+        associatedTable,
+        metadata?.associatedEntity.PrimaryIdAttribute,
+        metadata?.associatedEntity.PrimaryNameAttribute
+      ),
+    enabled: !!metadata?.intersectEntity.EntitySetName && !!metadata?.associatedEntity.EntitySetName,
+  });
+}
 
 export function getManytoManyRelationShipDefinition(
   currentTable: string | undefined,
