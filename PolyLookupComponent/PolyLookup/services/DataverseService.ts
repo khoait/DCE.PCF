@@ -1,5 +1,5 @@
 import axios from "axios";
-import { IEntityDefinition, IManyToManyRelationship, IMetadata, IViewDefinition } from "../types/metadata";
+import { IEntityDefinition, IManyToManyRelationship, IMetadata, IViewDefinition, IViewLayout } from "../types/metadata";
 import { useQuery } from "@tanstack/react-query";
 
 const nToNColumns = [
@@ -116,30 +116,37 @@ export function getEntityDefinition(entityName: string | undefined) {
         .then((res) => res.data);
 }
 
-export async function getViewDefinition(entityName: string | undefined, viewName: string | undefined) {
+export async function getViewDefinition(
+  entityName: string | undefined,
+  viewName: string | undefined,
+  queryType?: number | undefined
+) {
   if (typeof entityName === "undefined") return Promise.reject(new Error("Invalid arguments"));
 
-  if (viewName) {
-    const result = await axios.get<{ value: IViewDefinition[] }>(`/api/data/v${apiVersion}/savedqueries`, {
-      params: {
-        $filter: `returnedtypecode eq '${entityName}' and name eq '${viewName}'`,
-        $select: viewDefinitionColumns.join(","),
-      },
-    });
+  if (typeof viewName === "undefined" && typeof queryType === "undefined")
+    return Promise.reject(new Error("Invalid arguments"));
 
-    if (result?.data.value?.length) {
-      return result.data.value[0];
-    }
-  }
-
-  const lookupResult = await axios.get<{ value: IViewDefinition[] }>(`/api/data/v${apiVersion}/savedqueries`, {
+  const result = await axios.get<{ value: IViewDefinition[] }>(`/api/data/v${apiVersion}/savedqueries`, {
     params: {
-      $filter: `returnedtypecode eq '${entityName}' and querytype eq 64`,
+      $filter: `returnedtypecode eq '${entityName}' ${viewName ? `and name eq '${viewName}'` : ""} ${
+        queryType ? `and querytype eq ${queryType}` : ""
+      } `,
       $select: viewDefinitionColumns.join(","),
     },
   });
 
-  return lookupResult.data.value[0];
+  const layoutjson = result.data.value[0].layoutjson as unknown as string;
+  const layout = JSON.parse(layoutjson) as IViewLayout;
+  result.data.value[0].layoutjson = layout;
+  return result.data.value[0];
+}
+
+export async function getDefaultView(entityName: string | undefined, viewName: string | undefined) {
+  const viewByName = await getViewDefinition(entityName, viewName);
+  if (viewByName) return viewByName;
+
+  const defaultView = await getViewDefinition(entityName, undefined, 64);
+  return defaultView;
 }
 
 export function getMetadata(
@@ -158,7 +165,7 @@ export function getMetadata(
           getEntityDefinition(currentTable),
           getEntityDefinition(nnRelationship.IntersectEntityName),
           getEntityDefinition(associatedEntity),
-          getViewDefinition(associatedEntity, associatedViewName),
+          getDefaultView(associatedEntity, associatedViewName),
         ]).then(([currentEntity, intersectEntity, associatedEntity, associatedView]) => {
           return {
             nnRelationship,

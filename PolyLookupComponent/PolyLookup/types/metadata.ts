@@ -69,7 +69,7 @@ interface IViewCell {
   ImageProviderFunctionName: string;
 }
 
-interface IViewLayout {
+export interface IViewLayout {
   Name: string;
   Object: number;
   Rows: IViewRow[];

@@ -8,13 +8,11 @@ import {
   TagPickerBase,
   ValidationState,
 } from "@fluentui/react";
-import { QueryClient, QueryClientProvider, useMutation, useQuery } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useMutation } from "@tanstack/react-query";
 import {
   associateRecord,
   disassociateRecord,
   getCurrentRecord,
-  getMetadata,
-  retrieveAssociatedRecords,
   retrieveMultipleFetch,
   useMetadata,
   useSelectedItems,
@@ -24,6 +22,7 @@ import {
 //TODO: fix this hack
 import MainHandlebars from "handlebars";
 import * as RuntimeHandlebars from "handlebars/runtime";
+import { SuggestionInfo } from "./SuggestionInfo";
 const Handlebars = Object.assign(MainHandlebars, RuntimeHandlebars);
 
 const queryClient = new QueryClient();
@@ -300,6 +299,17 @@ const Body = ({
         }
         return TagPickerBase.defaultProps.onRenderItem(props);
       }}
+      onRenderSuggestionsItem={(tag: ITag) => {
+        const suggestion = suggestions?.find((s) => s[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] === tag.key);
+        if (suggestion) {
+          const infoMap = new Map<string, string>();
+          metadata?.associatedView?.layoutjson?.Rows?.at(0)?.Cells.forEach((cell) => {
+            infoMap.set(cell.Name, suggestion[cell.Name] ?? "");
+          });
+          return <SuggestionInfo infoMap={infoMap}></SuggestionInfo>;
+        }
+        return <></>;
+      }}
       resolveDelay={100}
       inputProps={{
         placeholder: isDataLoading
@@ -307,6 +317,9 @@ const Body = ({
           : selectedItems?.length || disabled
           ? ""
           : `Select ${metadata?.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label ?? "an item"}`,
+      }}
+      pickerCalloutProps={{
+        calloutMaxWidth: 500,
       }}
       itemLimit={itemLimit}
       onValidateInput={onCreateNew}
