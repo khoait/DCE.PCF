@@ -67,17 +67,18 @@ const Body = ({
   onChange,
   onQuickCreate,
 }: PolyLookupProps) => {
-  const pickerStyles: Partial<IBasePickerStyles> = {
-    root: { backgroundColor: "#fff", width: "100%" },
-    input: { minWidth: "0", display: disabled ? "none" : "inline-block" },
-    text: {
-      minWidth: "0",
-      borderColor: "transparent",
-      "&:hover": { borderColor: disabled ? "transparent" : "#000" },
-      "&:after": { backgroundColor: "transparent" },
-      "&:hover:after": { backgroundColor: disabled ? "rgba(50, 50, 50, 0.1)" : "transparent" },
-    },
-  };
+  // const pickerStyles: Partial<IBasePickerStyles> = {
+  //   root: { backgroundColor: "#fff", width: "100%" },
+  //   input: { minWidth: "0", display: disabled ? "none" : "inline-block" },
+  //   text: {
+  //     minWidth: "0",
+  //     borderColor: "transparent",
+  //     "&:hover": { borderColor: disabled ? "transparent" : "#000" },
+  //     "&:focus": { borderColor: disabled ? "transparent" : "#000" },
+  //     "&:after": { backgroundColor: "transparent" },
+  //     "&:hover:after": { backgroundColor: disabled ? "rgba(50, 50, 50, 0.1)" : "transparent" },
+  //   },
+  // };
 
   const pickerSuggestionsProps: IBasePickerSuggestionsProps = {
     noResultsFoundText: "No records found",
@@ -290,7 +291,28 @@ const Body = ({
       onEmptyResolveSuggestions={showAllSuggestions}
       onChange={onPickerChange}
       onItemSelected={onItemSelected}
-      styles={pickerStyles}
+      styles={(props) => {
+        // eslint-disable-next-line react/prop-types
+        const isFocused = props.isFocused;
+        const pickerStyles: Partial<IBasePickerStyles> = {
+          root: { backgroundColor: "#fff", width: "100%" },
+          input: { minWidth: "0", display: disabled ? "none" : "inline-block" },
+          text: {
+            minWidth: "0",
+            borderColor: "transparent",
+            borderWidth: 1,
+            borderRadius: 1,
+            "&:after": {
+              backgroundColor: "transparent",
+              borderColor: isFocused ? "#000" : "transparent",
+              borderWidth: 1,
+              borderRadius: 1,
+            },
+            "&:hover:after": { backgroundColor: disabled ? "rgba(50, 50, 50, 0.1)" : "transparent" },
+          },
+        };
+        return pickerStyles;
+      }}
       pickerSuggestionsProps={pickerSuggestionsProps}
       disabled={disabled}
       onRenderItem={(props: ITagItemProps) => {
