@@ -1,5 +1,6 @@
 import React, { useCallback } from "react";
 import {
+  BasePickerListBelow,
   IBasePickerStyles,
   IBasePickerSuggestionsProps,
   ITag,
@@ -52,6 +53,10 @@ export interface PolyLookupProps {
     value: string | undefined,
     useQuickCreateForm: boolean | undefined
   ) => Promise<string | undefined>;
+}
+
+interface ITagWithData extends ITag {
+  data: ComponentFramework.WebApi.Entity;
 }
 
 const Body = ({
@@ -173,14 +178,14 @@ const Body = ({
       if (!filterText) return [];
 
       const results = await filterQuery.mutateAsync(filterText);
-
       return (
         results.map(
           (i) =>
             ({
               key: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""],
               name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""],
-            } as ITag)
+              data: i,
+            } as ITagWithData)
         ) ?? []
       );
     },
@@ -195,7 +200,8 @@ const Body = ({
             ({
               key: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ?? "",
               name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""] ?? "",
-            } as ITag)
+              data: i,
+            } as ITagWithData)
         ) ?? []
       );
     },
@@ -309,15 +315,16 @@ const Body = ({
         return TagPickerBase.defaultProps.onRenderItem(props);
       }}
       onRenderSuggestionsItem={(tag: ITag) => {
-        const suggestion = suggestions?.find((s) => s[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] === tag.key);
-        if (suggestion) {
-          const infoMap = new Map<string, string>();
-          metadata?.associatedView?.layoutjson?.Rows?.at(0)?.Cells.forEach((cell) => {
-            infoMap.set(cell.Name, suggestion[cell.Name] ?? "");
-          });
-          return <SuggestionInfo infoMap={infoMap}></SuggestionInfo>;
-        }
-        return <></>;
+        const data = (tag as ITagWithData).data;
+        const infoMap = new Map<string, string>();
+        metadata?.associatedView?.layoutjson?.Rows?.at(0)?.Cells.forEach((cell) => {
+          let displayValue = data[cell.Name + "@OData.Community.Display.V1.FormattedValue"];
+          if (!displayValue) {
+            displayValue = data[cell.Name];
+          }
+          infoMap.set(cell.Name, displayValue ?? "");
+        });
+        return <SuggestionInfo infoMap={infoMap}></SuggestionInfo>;
       }}
       resolveDelay={100}
       inputProps={{
