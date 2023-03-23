@@ -223,6 +223,9 @@ export function retrieveMultipleFetch(
 
   return axios
     .get<{ value: ComponentFramework.WebApi.Entity[] }>(`/api/data/v${apiVersion}/${entitySetName}`, {
+      headers: {
+        Prefer: "odata.include-annotations=OData.Community.Display.V1.FormattedValue",
+      },
       params: {
         fetchXml: encodeURIComponent(newFetchXml),
       },
