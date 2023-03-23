@@ -1,5 +1,5 @@
 ---
-name: Feature request
+name: 🚀 Feature request
 about: Suggest an idea for a new feature or enhancement to existing features
 title: ''
 labels: "type: feature \U0001F680"
