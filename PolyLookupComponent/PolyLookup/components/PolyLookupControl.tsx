@@ -8,19 +8,21 @@ import {
   TagPickerBase,
   ValidationState,
 } from "@fluentui/react";
-import { QueryClient, QueryClientProvider, useMutation, useQuery } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useMutation } from "@tanstack/react-query";
 import {
   associateRecord,
   disassociateRecord,
   getCurrentRecord,
-  getMetadata,
-  retrieveAssociatedRecords,
   retrieveMultipleFetch,
+  useMetadata,
+  useSelectedItems,
+  useSuggestions,
 } from "../services/DataverseService";
 
 //TODO: fix this hack
 import MainHandlebars from "handlebars";
 import * as RuntimeHandlebars from "handlebars/runtime";
+import { SuggestionInfo } from "./SuggestionInfo";
 const Handlebars = Object.assign(MainHandlebars, RuntimeHandlebars);
 
 const queryClient = new QueryClient();
@@ -52,7 +54,7 @@ export interface PolyLookupProps {
   ) => Promise<string | undefined>;
 }
 
-export const Body = ({
+const Body = ({
   currentTable,
   currentRecordId,
   relationshipName,
@@ -65,18 +67,6 @@ export const Body = ({
   onChange,
   onQuickCreate,
 }: PolyLookupProps) => {
-  const pickerStyles: Partial<IBasePickerStyles> = {
-    root: { backgroundColor: "#fff", width: "100%" },
-    input: { minWidth: "0", display: disabled ? "none" : "inline-block" },
-    text: {
-      minWidth: "0",
-      borderColor: "transparent",
-      "&:hover": { borderColor: disabled ? "transparent" : "#000" },
-      "&:after": { backgroundColor: "transparent" },
-      "&:hover:after": { backgroundColor: disabled ? "rgba(50, 50, 50, 0.1)" : "transparent" },
-    },
-  };
-
   const pickerSuggestionsProps: IBasePickerSuggestionsProps = {
     noResultsFoundText: "No records found",
     forceResolveText: "Quick Create",
@@ -89,70 +79,34 @@ export const Body = ({
     data: metadata,
     isLoading: isLoadingMetadata,
     isSuccess: isLoadingMetadataSuccess,
-  } = useQuery({
-    queryKey: ["metadata", { currentTable, relationshipName }],
-    queryFn: () => getMetadata(currentTable, relationshipName, lookupView),
-  });
-
-  const associatedTable = metadata?.associatedEntity.LogicalName ?? "";
-
-  const associatedIntesectAttribute =
-    metadata?.nnRelationship.Entity1LogicalName === currentTable
-      ? metadata?.nnRelationship.Entity2IntersectAttribute
-      : metadata?.nnRelationship.Entity1IntersectAttribute;
-
-  const currentIntesectAttribute =
-    metadata?.nnRelationship.Entity1LogicalName === currentTable
-      ? metadata?.nnRelationship?.Entity1IntersectAttribute
-      : metadata?.nnRelationship?.Entity2IntersectAttribute;
-
-  const associatedTableSetName = metadata?.associatedEntity.EntitySetName ?? "";
-  const associatedFetchXml = metadata?.associatedView.fetchxml;
-  const fetchXmlTemplate = Handlebars.compile(associatedFetchXml ?? "");
+  } = useMetadata(currentTable, relationshipName, lookupView);
 
   if (metadata && isLoadingMetadataSuccess) {
     pickerSuggestionsProps.suggestionsHeaderText = `Suggested ${metadata.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label}`;
     pickerSuggestionsProps.noResultsFoundText = `No ${metadata.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label} found`;
   }
 
+  const associatedTableSetName = metadata?.associatedEntity.EntitySetName ?? "";
+  const associatedFetchXml = metadata?.associatedView.fetchxml;
+
+  const fetchXmlTemplate = Handlebars.compile(associatedFetchXml ?? "");
+
   // get top 50 suggestions from associated table
-  const { data: suggestionItems, isLoading: isLoadingSuggestionItems } = useQuery({
-    queryKey: ["suggestionItems", associatedTable],
-    queryFn: () => {
-      let fetchXml = metadata?.associatedView.fetchxml ?? "";
-      if (lookupView) {
-        const currentRecord = getCurrentRecord();
-        fetchXml = fetchXmlTemplate(currentRecord);
-      }
-      return retrieveMultipleFetch(associatedTableSetName, fetchXml, 1, pageSize);
-    },
-    enabled: !!metadata?.associatedView.fetchxml && !!associatedTableSetName,
-  });
+  const { data: suggestions, isLoading: isLoadingSuggestions } = useSuggestions(
+    associatedTableSetName,
+    fetchXmlTemplate,
+    pageSize
+  );
 
   // get selected items
   const {
     data: selectedItems,
-    refetch: selectedItemsRefetch,
     isLoading: isLoadingSelectedItems,
-    isSuccess,
-  } = useQuery({
-    queryKey: ["selectedItems", { currentTable, relationshipName }],
-    queryFn: () =>
-      retrieveAssociatedRecords(
-        currentRecordId,
-        metadata?.intersectEntity.LogicalName,
-        metadata?.intersectEntity.EntitySetName,
-        metadata?.intersectEntity.PrimaryIdAttribute,
-        currentIntesectAttribute,
-        associatedIntesectAttribute,
-        associatedTable,
-        metadata?.associatedEntity.PrimaryIdAttribute,
-        metadata?.associatedEntity.PrimaryNameAttribute
-      ),
-    enabled: !!metadata?.intersectEntity.EntitySetName && !!metadata?.associatedEntity.EntitySetName,
-  });
+    isSuccess: isLoadingSelectedItemsSuccess,
+    refetch: selectedItemsRefetch,
+  } = useSelectedItems(currentTable, currentRecordId, relationshipName, metadata);
 
-  if (isSuccess && onChange) {
+  if (isLoadingSelectedItemsSuccess && onChange) {
     onChange(selectedItems?.map((i) => i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""] as string).join(", "));
   }
 
@@ -236,7 +190,7 @@ export const Body = ({
   const showAllSuggestions = useCallback(
     async (selectedTags?: ITag[]): Promise<ITag[]> => {
       return (
-        suggestionItems?.map(
+        suggestions?.map(
           (i) =>
             ({
               key: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ?? "",
@@ -245,7 +199,7 @@ export const Body = ({
         ) ?? []
       );
     },
-    [suggestionItems, metadata?.associatedEntity.PrimaryIdAttribute]
+    [suggestions, metadata?.associatedEntity.PrimaryIdAttribute]
   );
 
   const onPickerChange = useCallback(
@@ -294,6 +248,7 @@ export const Body = ({
           if (result) {
             associateQuery.mutate(result);
             // TODO: fix this hack
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
             pickerRef.current.input.current?._updateValue("");
           }
@@ -305,7 +260,7 @@ export const Body = ({
     return ValidationState.invalid;
   };
 
-  const isDataLoading = isLoadingMetadata || isLoadingSuggestionItems || isLoadingSelectedItems;
+  const isDataLoading = isLoadingMetadata || isLoadingSuggestions || isLoadingSelectedItems;
 
   return (
     <TagPicker
@@ -323,7 +278,28 @@ export const Body = ({
       onEmptyResolveSuggestions={showAllSuggestions}
       onChange={onPickerChange}
       onItemSelected={onItemSelected}
-      styles={pickerStyles}
+      styles={(props) => {
+        // eslint-disable-next-line react/prop-types
+        const isFocused = props.isFocused;
+        const pickerStyles: Partial<IBasePickerStyles> = {
+          root: { backgroundColor: "#fff", width: "100%" },
+          input: { minWidth: "0", display: disabled ? "none" : "inline-block" },
+          text: {
+            minWidth: "0",
+            borderColor: "transparent",
+            borderWidth: 1,
+            borderRadius: 1,
+            "&:after": {
+              backgroundColor: "transparent",
+              borderColor: isFocused ? "#000" : "transparent",
+              borderWidth: 1,
+              borderRadius: 1,
+            },
+            "&:hover:after": { backgroundColor: disabled ? "rgba(50, 50, 50, 0.1)" : "transparent" },
+          },
+        };
+        return pickerStyles;
+      }}
       pickerSuggestionsProps={pickerSuggestionsProps}
       disabled={disabled}
       onRenderItem={(props: ITagItemProps) => {
@@ -332,6 +308,17 @@ export const Body = ({
         }
         return TagPickerBase.defaultProps.onRenderItem(props);
       }}
+      onRenderSuggestionsItem={(tag: ITag) => {
+        const suggestion = suggestions?.find((s) => s[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] === tag.key);
+        if (suggestion) {
+          const infoMap = new Map<string, string>();
+          metadata?.associatedView?.layoutjson?.Rows?.at(0)?.Cells.forEach((cell) => {
+            infoMap.set(cell.Name, suggestion[cell.Name] ?? "");
+          });
+          return <SuggestionInfo infoMap={infoMap}></SuggestionInfo>;
+        }
+        return <></>;
+      }}
       resolveDelay={100}
       inputProps={{
         placeholder: isDataLoading
@@ -339,6 +326,9 @@ export const Body = ({
           : selectedItems?.length || disabled
           ? ""
           : `Select ${metadata?.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label ?? "an item"}`,
+      }}
+      pickerCalloutProps={{
+        calloutMaxWidth: 500,
       }}
       itemLimit={itemLimit}
       onValidateInput={onCreateNew}
