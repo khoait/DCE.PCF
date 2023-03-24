@@ -1,14 +1,10 @@
 import React from "react";
-import { IconButton, ILabelStyles, IStackTokens, IStyle, Label, Stack } from "@fluentui/react";
+import { IconButton, ILabelStyles, IStyle, Label, Stack } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
 
 export interface ISuggestionInfoProps {
   infoMap: Map<string, string>;
 }
-
-const itemAlignmentsStackTokens: IStackTokens = {
-  padding: 10,
-};
 
 const commonStyle: IStyle = {
   display: "block",
