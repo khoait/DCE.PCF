@@ -1,6 +1,5 @@
 import React, { useCallback } from "react";
 import {
-  BasePickerListBelow,
   IBasePickerStyles,
   IBasePickerSuggestionsProps,
   ITag,
@@ -21,6 +20,8 @@ import {
 } from "../services/DataverseService";
 
 //TODO: fix this hack
+// edit node_modules\handlebars\package.json and
+// change "browser" to "browser": "./dist/cjs/handlebars.js",
 import MainHandlebars from "handlebars";
 import * as RuntimeHandlebars from "handlebars/runtime";
 import { SuggestionInfo } from "./SuggestionInfo";
@@ -46,7 +47,7 @@ export interface PolyLookupProps {
   itemLimit?: number;
   pageSize?: number;
   disabled?: boolean;
-  onChange?: (value: string | undefined) => void;
+  onChange?: (selectedItems: ComponentFramework.EntityReference[] | undefined) => void;
   onQuickCreate?: (
     entityName: string | undefined,
     primaryAttribute: string | undefined,
@@ -112,7 +113,15 @@ const Body = ({
   } = useSelectedItems(currentTable, currentRecordId, relationshipName, metadata);
 
   if (isLoadingSelectedItemsSuccess && onChange) {
-    onChange(selectedItems?.map((i) => i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""] as string).join(", "));
+    onChange(
+      selectedItems?.map((i) => {
+        return {
+          id: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""],
+          name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""],
+          etn: metadata?.associatedEntity.LogicalName ?? "",
+        } as ComponentFramework.EntityReference;
+      })
+    );
   }
 
   // filter query
@@ -223,13 +232,8 @@ const Body = ({
 
       added?.forEach((id) => associateQuery.mutate(id as string));
       removed?.forEach((id) => disassociateQuery.mutate(id as string));
-
-      if (onChange) {
-        const output = selectedTags?.map((t) => t.name).join(", ");
-        onChange(output);
-      }
     },
-    [selectedItems, metadata?.associatedEntity.PrimaryIdAttribute, onChange]
+    [selectedItems, metadata?.associatedEntity.PrimaryIdAttribute]
   );
 
   const onItemSelected = useCallback(

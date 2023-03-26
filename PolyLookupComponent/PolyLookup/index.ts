@@ -7,6 +7,7 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
   private theComponent: ComponentFramework.ReactControl<IInputs, IOutputs>;
   private notifyOutputChanged: () => void;
   private output: string | undefined;
+  private outputSelectedItems: string | undefined;
   private context: IExtendedContext;
 
   /**
@@ -46,7 +47,10 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
       itemLimit: context.parameters.itemLimit.raw ?? undefined,
       pageSize: context.userSettings.pagingLimit ?? undefined,
       disabled: context.mode.isControlDisabled,
-      onChange: context.parameters.outputSelected.raw === "1" ? this.onLookupChange : undefined,
+      onChange:
+        context.parameters.outputSelected.raw === "1" || context.parameters.outputField.attributes
+          ? this.onLookupChange
+          : undefined,
       onQuickCreate: context.parameters.allowQuickCreate.raw === "1" ? this.onQuickCreate : undefined,
     };
     return React.createElement(PolyLookupControl, props);
@@ -59,6 +63,7 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
   public getOutputs(): IOutputs {
     return {
       boundField: this.output,
+      outputField: this.outputSelectedItems,
     };
   }
 
@@ -70,8 +75,14 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
     // Add code to cleanup control if necessary
   }
 
-  public onLookupChange = (value: string | undefined) => {
-    this.output = value;
+  public onLookupChange = (selectedItems: ComponentFramework.EntityReference[] | undefined) => {
+    if (this.context.parameters.outputSelected.raw === "1") {
+      this.output = selectedItems?.map((item) => item.name).join(",");
+    }
+
+    if (this.context.parameters.outputField.attributes) {
+      this.outputSelectedItems = JSON.stringify(selectedItems);
+    }
     this.notifyOutputChanged();
   };
 
