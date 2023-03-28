@@ -1,7 +1,7 @@
 # 🚀 DynCRMExp Power Apps PCF Components Repository
 
 ![PowerApps PCF](https://img.shields.io/badge/PowerApps%20PCF%20Components-742774?logo=powerapps&logoColor=white)
-[![Github All Releases](https://img.shields.io/github/downloads/khoait/DCE.PCF/total.svg)](https://github.com/khoait/DCE.PCF/releases)
+[![GitHub all releases](https://img.shields.io/github/downloads/khoait/dce.pcf/total?style=social)](https://github.com/khoait/DCE.PCF/releases)
 [![Sponsor on Github](https://img.shields.io/badge/Buy%20me%20a%20coffee-323330?logo=githubsponsors)](https://github.com/sponsors/khoait)
 
 This Github repository contains a collection of React-based components that provide extensive functionalities with consistent UI/UX to Power Apps using the Fluent UI Design Language. The components are designed to be easy to use and highly customizable, allowing you to quickly build powerful and visually appealing Power Apps.
