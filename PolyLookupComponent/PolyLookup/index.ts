@@ -36,13 +36,19 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
   public updateView(context: IExtendedContext): React.ReactElement {
     this.context = context;
 
+    let clientUrl = "";
+
+    try {
+      clientUrl = context.page.getClientUrl();
+    } catch {}
+
     const props: PolyLookupProps = {
       currentTable: context.page.entityTypeName,
       currentRecordId: context.page.entityId,
       relationshipName: context.parameters.relationship.raw ?? "",
       relationshipType:
         RelationshipTypeEnum[context.parameters.relationshipType.raw as keyof typeof RelationshipTypeEnum],
-      clientUrl: context.page.getClientUrl(),
+      clientUrl: clientUrl,
       lookupView: context.parameters.lookupView.raw ?? undefined,
       itemLimit: context.parameters.itemLimit.raw ?? undefined,
       pageSize: context.userSettings.pagingLimit ?? undefined,

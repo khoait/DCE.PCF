@@ -18,14 +18,10 @@ import {
   useSelectedItems,
   useSuggestions,
 } from "../services/DataverseService";
-
-//TODO: fix this hack
-// edit node_modules\handlebars\package.json and
-// change "browser" to "browser": "./dist/cjs/handlebars.js",
-import MainHandlebars from "handlebars";
-import * as RuntimeHandlebars from "handlebars/runtime";
 import { SuggestionInfo } from "./SuggestionInfo";
-const Handlebars = Object.assign(MainHandlebars, RuntimeHandlebars);
+
+// TODO: fix this import in handlebars next version
+import Handlebars from "handlebars/lib/handlebars";
 
 const queryClient = new QueryClient();
 const parser = new DOMParser();
@@ -301,7 +297,7 @@ const Body = ({
             borderRadius: 1,
             "&:after": {
               backgroundColor: "transparent",
-              borderColor: isFocused ? "#000" : "transparent",
+              borderColor: isFocused ? "#666" : "transparent",
               borderWidth: 1,
               borderRadius: 1,
             },
