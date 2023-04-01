@@ -19,6 +19,7 @@ import {
   useSuggestions,
 } from "../services/DataverseService";
 import { SuggestionInfo } from "./SuggestionInfo";
+import { IMetadata } from "../types/metadata";
 
 // TODO: fix this import in handlebars next version
 import Handlebars from "handlebars/lib/handlebars";
@@ -73,6 +74,10 @@ const Body = ({
     noResultsFoundText: "No records found",
     forceResolveText: "Quick Create",
     showForceResolve: () => onQuickCreate !== undefined,
+    resultsFooter: () => <div>No more records</div>,
+    resultsFooterFull: () => <div>Refine search term for more</div>,
+    resultsMaximumNumber: (pageSize ?? 50) * 2,
+    searchForMoreText: "Load more",
   };
 
   const pickerRef = React.useRef<TagPickerBase>(null);
@@ -122,7 +127,7 @@ const Body = ({
 
   // filter query
   const filterQuery = useMutation({
-    mutationFn: (searchText: string) => {
+    mutationFn: ({ searchText, pageSizeParam }: { searchText: string; pageSizeParam: number | undefined }) => {
       let fetchXml = metadata?.associatedView.fetchxml ?? "";
       if (!lookupView && metadata?.associatedView.querytype === 64) {
         // if lookup view is not specified and using default lookup fiew,
@@ -149,7 +154,7 @@ const Body = ({
           PolyLookupSearch: searchText,
         });
       }
-      return retrieveMultipleFetch(associatedTableSetName, fetchXml, 1, pageSize);
+      return retrieveMultipleFetch(associatedTableSetName, fetchXml, 1, pageSizeParam);
     },
   });
 
@@ -180,35 +185,26 @@ const Body = ({
 
   const filterSuggestions = useCallback(
     async (filterText: string, selectedTag?: ITag[]): Promise<ITag[]> => {
-      if (!filterText) return [];
+      const results = await filterQuery.mutateAsync({ searchText: filterText, pageSizeParam: pageSize });
+      return getSuggestionTags(results, metadata);
+    },
+    [metadata?.associatedEntity.EntitySetName]
+  );
 
-      const results = await filterQuery.mutateAsync(filterText);
-      return (
-        results.map(
-          (i) =>
-            ({
-              key: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""],
-              name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""],
-              data: i,
-            } as ITagWithData)
-        ) ?? []
-      );
+  const showMoreSuggestions = useCallback(
+    async (filterText: string, selectedTag?: ITag[]): Promise<ITag[]> => {
+      const results = await filterQuery.mutateAsync({
+        searchText: filterText,
+        pageSizeParam: (pageSize ?? 50) * 2 + 1,
+      });
+      return getSuggestionTags(results, metadata);
     },
     [metadata?.associatedEntity.EntitySetName]
   );
 
   const showAllSuggestions = useCallback(
     async (selectedTags?: ITag[]): Promise<ITag[]> => {
-      return (
-        suggestions?.map(
-          (i) =>
-            ({
-              key: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ?? "",
-              name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""] ?? "",
-              data: i,
-            } as ITagWithData)
-        ) ?? []
-      );
+      return getSuggestionTags(suggestions, metadata);
     },
     [suggestions, metadata?.associatedEntity.PrimaryIdAttribute]
   );
@@ -282,6 +278,7 @@ const Body = ({
       )}
       onResolveSuggestions={filterSuggestions}
       onEmptyResolveSuggestions={showAllSuggestions}
+      onGetMoreResults={showMoreSuggestions}
       onChange={onPickerChange}
       onItemSelected={onItemSelected}
       styles={(props) => {
@@ -342,6 +339,22 @@ const Body = ({
     />
   );
 };
+
+function getSuggestionTags(
+  suggestions: ComponentFramework.WebApi.Entity[] | undefined,
+  metadata: IMetadata | undefined
+) {
+  return (
+    suggestions?.map(
+      (i) =>
+        ({
+          key: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ?? "",
+          name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""] ?? "",
+          data: i,
+        } as ITagWithData)
+    ) ?? []
+  );
+}
 
 export default function PolyLookupControl(props: PolyLookupProps) {
   return (
