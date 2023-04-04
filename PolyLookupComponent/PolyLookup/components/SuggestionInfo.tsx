@@ -47,7 +47,10 @@ export const SuggestionInfo = ({ infoMap }: ISuggestionInfoProps) => {
         <Stack.Item align="stretch">
           <IconButton
             iconProps={{ iconName: showMore ? "ChevronUp" : "ChevronDown" }}
-            styles={{ root: { height: "100%", color: "#000" } }}
+            styles={{
+              root: { height: "100%", color: "#000" },
+              flexContainer: { alignItems: showMore ? "flex-start" : "center", paddingTop: showMore ? 11 : 0 },
+            }}
             title="More details"
             onClick={(e) => {
               e.preventDefault();
