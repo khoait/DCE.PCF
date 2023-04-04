@@ -46,8 +46,8 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
       currentTable: context.page.entityTypeName,
       currentRecordId: context.page.entityId,
       relationshipName: context.parameters.relationship.raw ?? "",
-      relationshipType:
-        RelationshipTypeEnum[context.parameters.relationshipType.raw as keyof typeof RelationshipTypeEnum],
+      relationship2Name: context.parameters.relationship2.raw ?? undefined,
+      relationshipType: Number.parseInt(context.parameters.relationshipType.raw) as RelationshipTypeEnum,
       clientUrl: clientUrl,
       lookupView: context.parameters.lookupView.raw ?? undefined,
       itemLimit: context.parameters.itemLimit.raw ?? undefined,

@@ -1,31 +1,25 @@
 type RelationshipType = "OneToManyRelationship" | "ManyToManyRelationship";
 
 export interface IRelationshipDefinition {
-  SchemaName?: string;
-  RelationshipType?: RelationshipType;
+  SchemaName: string;
+  RelationshipType: RelationshipType;
 }
 
-export interface IManyToManyRelationship {
-  SchemaName: string;
+export interface IManyToManyRelationship extends IRelationshipDefinition {
   Entity1LogicalName: string;
   Entity2LogicalName: string;
   Entity1IntersectAttribute: string;
   Entity2IntersectAttribute: string;
-  RelationshipType: string;
   IntersectEntityName: string;
 }
 
 export interface IOneToManyRelationship extends IRelationshipDefinition {
-  ReferencedAttribute?: string;
-  ReferencedAttributeName?: string;
-  ReferencedEntity?: string;
-  ReferencedEntityName?: string;
-  ReferencingAttribute?: string;
-  ReferencingAttributeName?: string;
-  ReferencingEntity?: string;
-  ReferencingEntityName?: string;
-  ReferencedEntityNavigationPropertyName?: string;
-  ReferencingEntityNavigationPropertyName?: string;
+  ReferencedAttribute: string;
+  ReferencedEntity: string;
+  ReferencingAttribute: string;
+  ReferencingEntity: string;
+  ReferencedEntityNavigationPropertyName: string;
+  ReferencingEntityNavigationPropertyName: string;
 }
 
 export interface IEntityDefinition {
@@ -33,16 +27,18 @@ export interface IEntityDefinition {
   DisplayName: {
     UserLocalizedLabel: {
       Label: string;
-    };
+    } | null;
   };
+  DisplayNameLocalized: string;
   PrimaryIdAttribute: string;
   PrimaryNameAttribute: string;
   EntitySetName: string;
   DisplayCollectionName: {
     UserLocalizedLabel: {
       Label: string;
-    };
+    } | null;
   };
+  DisplayCollectionNameLocalized: string;
   IsQuickCreateEnabled: boolean;
 }
 
@@ -90,9 +86,20 @@ export interface IViewDefinition {
 }
 
 export interface IMetadata {
-  nnRelationship: IManyToManyRelationship;
+  relationship1: IManyToManyRelationship | IOneToManyRelationship;
+  relationship2: IOneToManyRelationship | undefined;
   currentEntity: IEntityDefinition;
   intersectEntity: IEntityDefinition;
   associatedEntity: IEntityDefinition;
   associatedView: IViewDefinition;
+  currentIntesectAttribute: string;
+  associatedIntesectAttribute: string;
 }
+
+export const isOneToMany = (r: IRelationshipDefinition | undefined): r is IOneToManyRelationship => {
+  return r?.RelationshipType === "OneToManyRelationship";
+};
+
+export const isManyToMany = (r: IRelationshipDefinition | undefined): r is IManyToManyRelationship => {
+  return r?.RelationshipType === "ManyToManyRelationship";
+};

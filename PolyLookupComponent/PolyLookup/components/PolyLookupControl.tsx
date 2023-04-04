@@ -11,6 +11,8 @@ import {
 import { QueryClient, QueryClientProvider, useMutation } from "@tanstack/react-query";
 import {
   associateRecord,
+  createRecord,
+  deleteRecord,
   disassociateRecord,
   getCurrentRecord,
   retrieveMultipleFetch,
@@ -38,6 +40,7 @@ export interface PolyLookupProps {
   currentTable: string;
   currentRecordId: string;
   relationshipName: string;
+  relationship2Name: string | undefined;
   relationshipType: RelationshipTypeEnum;
   clientUrl: string;
   lookupView?: string;
@@ -63,6 +66,7 @@ const Body = ({
   currentTable,
   currentRecordId,
   relationshipName,
+  relationship2Name,
   relationshipType,
   clientUrl,
   lookupView,
@@ -122,11 +126,16 @@ const Body = ({
     data: metadata,
     isLoading: isLoadingMetadata,
     isSuccess: isLoadingMetadataSuccess,
-  } = useMetadata(currentTable, relationshipName, lookupView);
+  } = useMetadata(
+    currentTable,
+    relationshipName,
+    relationshipType === RelationshipTypeEnum.Custom ? relationship2Name ?? undefined : undefined,
+    lookupView
+  );
 
   if (metadata && isLoadingMetadataSuccess) {
-    pickerSuggestionsProps.suggestionsHeaderText = `Suggested ${metadata.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label}`;
-    pickerSuggestionsProps.noResultsFoundText = `No ${metadata.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label} found`;
+    pickerSuggestionsProps.suggestionsHeaderText = `Suggested ${metadata.associatedEntity.DisplayCollectionNameLocalized}`;
+    pickerSuggestionsProps.noResultsFoundText = `No ${metadata.associatedEntity.DisplayCollectionNameLocalized} found`;
   }
 
   const associatedTableSetName = metadata?.associatedEntity.EntitySetName ?? "";
@@ -196,15 +205,24 @@ const Body = ({
 
   // associate query
   const associateQuery = useMutation({
-    mutationFn: (id: string) =>
-      associateRecord(
-        metadata?.currentEntity.EntitySetName,
-        currentRecordId,
-        metadata?.associatedEntity?.EntitySetName,
-        id,
-        relationshipName,
-        clientUrl
-      ),
+    mutationFn: (id: string) => {
+      if (relationshipType === RelationshipTypeEnum.ManyToMany) {
+        return associateRecord(
+          metadata?.currentEntity.EntitySetName,
+          currentRecordId,
+          metadata?.associatedEntity?.EntitySetName,
+          id,
+          relationshipName,
+          clientUrl
+        );
+      } else if (relationshipType === RelationshipTypeEnum.Custom) {
+        return createRecord(metadata?.intersectEntity.EntitySetName, {
+          [`${metadata?.currentIntesectAttribute}@odata.bind`]: `/${metadata?.currentEntity.EntitySetName}(${currentRecordId})`,
+          [`${metadata?.associatedIntesectAttribute}@odata.bind`]: `/${metadata?.associatedEntity.EntitySetName}(${id})`,
+        });
+      }
+      return Promise.reject("Relationship type not supported");
+    },
     onSuccess: (data, variables, context) => {
       selectedItemsRefetch();
     },
@@ -212,8 +230,14 @@ const Body = ({
 
   // disassociate query
   const disassociateQuery = useMutation({
-    mutationFn: (id: string) =>
-      disassociateRecord(metadata?.currentEntity?.EntitySetName, currentRecordId, relationshipName, id),
+    mutationFn: (id: string) => {
+      if (relationshipType === RelationshipTypeEnum.ManyToMany) {
+        return disassociateRecord(metadata?.currentEntity?.EntitySetName, currentRecordId, relationshipName, id);
+      } else if (relationshipType === RelationshipTypeEnum.Custom) {
+        return deleteRecord(metadata?.intersectEntity.EntitySetName, id);
+      }
+      return Promise.reject("Relationship type not supported");
+    },
     onSuccess: (data, variables, context) => {
       selectedItemsRefetch();
     },

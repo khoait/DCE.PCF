@@ -1,5 +1,13 @@
 import axios from "axios";
-import { IEntityDefinition, IManyToManyRelationship, IMetadata, IViewDefinition, IViewLayout } from "../types/metadata";
+import {
+  IEntityDefinition,
+  IManyToManyRelationship,
+  IMetadata,
+  IOneToManyRelationship,
+  isManyToMany,
+  IViewDefinition,
+  IViewLayout,
+} from "../types/metadata";
 import { useQuery } from "@tanstack/react-query";
 
 const nToNColumns = [
@@ -10,6 +18,15 @@ const nToNColumns = [
   "Entity2IntersectAttribute",
   "RelationshipType",
   "IntersectEntityName",
+];
+
+const oneToNColumns = [
+  "SchemaName",
+  "ReferencedEntity",
+  "ReferencingEntity",
+  "ReferencedAttribute",
+  "ReferencingAttribute",
+  "RelationshipType",
 ];
 
 const tableDefinitionColumns = [
@@ -26,10 +43,15 @@ const viewDefinitionColumns = ["savedqueryid", "name", "fetchxml", "layoutjson",
 
 const apiVersion = "9.2";
 
-export function useMetadata(currentTable: string, relationshipName: string, lookupView: string | undefined) {
+export function useMetadata(
+  currentTable: string,
+  relationshipName: string,
+  relationship2Name: string | undefined,
+  lookupView: string | undefined
+) {
   return useQuery({
-    queryKey: ["metadata", { currentTable, relationshipName, lookupView }],
-    queryFn: () => getMetadata(currentTable, relationshipName, lookupView),
+    queryKey: ["metadata", { currentTable, relationshipName, relationship2Name, lookupView }],
+    queryFn: () => getMetadata(currentTable, relationshipName, relationship2Name, lookupView),
     enabled: !!currentTable && !!relationshipName,
   });
 }
@@ -70,16 +92,16 @@ export function useSelectedItems(
       : metadata?.nnRelationship?.Entity2IntersectAttribute;
 
   return useQuery({
-    queryKey: ["selectedItems", { currentTable, currentRecordId, relationshipName }],
+    queryKey: ["selectedItems", { currentTable, currentRecordId }],
     queryFn: () =>
       retrieveAssociatedRecords(
         currentRecordId,
         metadata?.intersectEntity.LogicalName,
         metadata?.intersectEntity.EntitySetName,
         metadata?.intersectEntity.PrimaryIdAttribute,
-        currentIntesectAttribute,
-        associatedIntesectAttribute,
-        associatedTable,
+        metadata?.currentIntesectAttribute,
+        metadata?.associatedIntesectAttribute,
+        metadata?.associatedEntity.LogicalName,
         metadata?.associatedEntity.PrimaryIdAttribute,
         metadata?.associatedEntity.PrimaryNameAttribute
       ),
@@ -108,6 +130,43 @@ export function getManytoManyRelationShipDefinition(
         .then((res) => res.data);
 }
 
+export function getOnetoManyRelationShipDefinition(
+  currentTable: string | undefined,
+  relationshipName: string | undefined
+) {
+  return typeof currentTable === "undefined" || typeof relationshipName === "undefined"
+    ? Promise.reject(new Error("Invalid table or relationship name"))
+    : axios
+        .get<IOneToManyRelationship>(
+          `/api/data/v${apiVersion}/EntityDefinitions(LogicalName='${currentTable}')/OneToManyRelationships(SchemaName='${relationshipName}')`,
+          {
+            params: {
+              $select: oneToNColumns.join(","),
+            },
+          }
+        )
+        .then((res) => res.data);
+}
+
+export function getManytoOneRelationShipDefinition(
+  currentTable: string | undefined,
+  relationshipName: string | undefined
+) {
+  return typeof currentTable === "undefined" || typeof relationshipName === "undefined"
+    ? Promise.reject(new Error("Invalid table or relationship name"))
+    : axios
+        .get<{ value: IOneToManyRelationship[] }>(
+          `/api/data/v${apiVersion}/RelationshipDefinitions/Microsoft.Dynamics.CRM.OneToManyRelationshipMetadata`,
+          {
+            params: {
+              $select: oneToNColumns.join(","),
+              $filter: `SchemaName eq '${relationshipName}' and ReferencingEntity eq '${currentTable}'`,
+            },
+          }
+        )
+        .then((res) => res.data.value.at(0));
+}
+
 export function getEntityDefinition(entityName: string | undefined) {
   return typeof entityName === "undefined"
     ? Promise.reject(new Error("Invalid entity name"))
@@ -117,7 +176,13 @@ export function getEntityDefinition(entityName: string | undefined) {
             $select: tableDefinitionColumns.join(","),
           },
         })
-        .then((res) => res.data);
+        .then((res) => {
+          return {
+            ...res.data,
+            DisplayNameLocalized: res.data.DisplayName.UserLocalizedLabel?.Label ?? "",
+            DisplayCollectionNameLocalized: res.data.DisplayCollectionName.UserLocalizedLabel?.Label ?? "",
+          } as IEntityDefinition;
+        });
 }
 
 export async function getViewDefinition(
@@ -153,33 +218,73 @@ export async function getDefaultView(entityName: string | undefined, viewName: s
   return defaultView;
 }
 
-export function getMetadata(
+export async function getMetadata(
   currentTable: string | undefined,
   relationshipName: string | undefined,
+  relationship2Name: string | undefined,
   associatedViewName: string | undefined
 ): Promise<IMetadata> {
-  return typeof currentTable === "undefined" || typeof relationshipName === "undefined"
-    ? Promise.reject(new Error("Invalid arguments"))
-    : getManytoManyRelationShipDefinition(currentTable, relationshipName).then((nnRelationship) => {
-        const associatedEntity =
-          nnRelationship.Entity1LogicalName === currentTable
-            ? nnRelationship.Entity2LogicalName
-            : nnRelationship.Entity1LogicalName;
-        return Promise.all([
-          getEntityDefinition(currentTable),
-          getEntityDefinition(nnRelationship.IntersectEntityName),
-          getEntityDefinition(associatedEntity),
-          getDefaultView(associatedEntity, associatedViewName),
-        ]).then(([currentEntity, intersectEntity, associatedEntity, associatedView]) => {
-          return {
-            nnRelationship,
-            currentEntity,
-            intersectEntity,
-            associatedEntity,
-            associatedView,
-          };
-        });
-      });
+  if (typeof currentTable === "undefined" || typeof relationshipName === "undefined")
+    return Promise.reject(new Error("Invalid arguments"));
+
+  let relationship1: IManyToManyRelationship | IOneToManyRelationship;
+  let relationship2: IOneToManyRelationship | undefined;
+  let intersectEntityName = "";
+  let associatedEntityName: string | undefined;
+
+  if (typeof relationship2Name === "undefined") {
+    relationship1 = await getManytoManyRelationShipDefinition(currentTable, relationshipName);
+    intersectEntityName = relationship1.IntersectEntityName;
+    associatedEntityName =
+      relationship1.Entity1LogicalName === currentTable
+        ? relationship1.Entity2LogicalName
+        : relationship1.Entity1LogicalName;
+  } else {
+    relationship1 = await getOnetoManyRelationShipDefinition(currentTable, relationshipName);
+    intersectEntityName = relationship1.ReferencingEntity;
+    relationship2 = await getManytoOneRelationShipDefinition(intersectEntityName, relationship2Name);
+    associatedEntityName = relationship2?.ReferencedEntity;
+  }
+
+  try {
+    const [currentEntity, intersectEntity, associatedEntity, associatedView] = await Promise.all([
+      getEntityDefinition(currentTable),
+      getEntityDefinition(intersectEntityName),
+      getEntityDefinition(associatedEntityName),
+      getDefaultView(associatedEntityName, associatedViewName),
+    ]);
+
+    let currentIntesectAttribute: string;
+    let associatedIntesectAttribute: string;
+    if (isManyToMany(relationship1)) {
+      currentIntesectAttribute =
+        relationship1.Entity1LogicalName === currentTable
+          ? relationship1.Entity1IntersectAttribute
+          : relationship1.Entity2IntersectAttribute;
+
+      associatedIntesectAttribute =
+        relationship1.Entity1LogicalName === currentTable
+          ? relationship1.Entity2IntersectAttribute
+          : relationship1.Entity1IntersectAttribute;
+    } else {
+      currentIntesectAttribute = relationship1.ReferencingAttribute;
+      associatedIntesectAttribute = relationship2?.ReferencingAttribute ?? "";
+    }
+
+    return {
+      relationship1,
+      relationship2,
+      currentEntity,
+      intersectEntity,
+      associatedEntity,
+      associatedView,
+      currentIntesectAttribute,
+      associatedIntesectAttribute,
+    };
+  } catch (error) {
+    console.log(error);
+    throw error;
+  }
 }
 
 export function retrieveMultiple(
@@ -352,6 +457,34 @@ export function disassociateRecord(
       },
     }
   );
+}
+
+export function createRecord(entitySetName: string | undefined, record: ComponentFramework.WebApi.Entity) {
+  if (typeof entitySetName === "undefined") return Promise.reject(new Error("Invalid entity set name"));
+
+  return axios.post(`/api/data/v${apiVersion}/${entitySetName}`, record, {
+    headers: {
+      "OData-MaxVersion": "4.0",
+      "OData-Version": "4.0",
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+  });
+}
+
+export function deleteRecord(entitySetName: string | undefined, recordId: string | undefined) {
+  if (typeof entitySetName === "undefined" || typeof recordId === "undefined")
+    return Promise.reject(new Error("Invalid arguments"));
+
+  return axios.delete(`/api/data/v${apiVersion}/${entitySetName}(${recordId})`, {
+    headers: {
+      "OData-MaxVersion": "4.0",
+      "OData-Version": "4.0",
+      "If-Match": null,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+  });
 }
 
 export function getCurrentRecord(): ComponentFramework.WebApi.Entity {
