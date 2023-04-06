@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DCEPCF" constructor="PolyLookup" version="1.0.16" display-name-key="PolyLookup v1.0.16" description-key="Multi-select lookup supporting different type of many-to-many relationships." control-type="virtual" >
+  <control namespace="DCEPCF" constructor="PolyLookup" version="1.0.17" display-name-key="PolyLookup v1.0.17" description-key="Multi-select lookup supporting different type of many-to-many relationships." control-type="virtual" >
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
     Example1:
@@ -18,7 +18,7 @@
       -->
     </external-service-usage>
     <!-- property node identifies a specific, configurable piece of data that the control expects from CDS -->
-    <property name="boundField" display-name-key="Bound Field" description-key="The field that the component is bound to" of-type="SingleLine.Text" usage="bound" required="true" />
+    <property name="boundField" display-name-key="Bound Field" description-key="The field that the component is bound to" of-type-group="text" usage="bound" required="true" />
     <property name="relationshipType" display-name-key="Relationship Type" description-key="Relationship type between tables: Many To Many, Custom N:N (future), Connection (future)" of-type="Enum" usage="input" required="true" >
       <value name="nton" display-name-key="Many To Many">0</value>
       <value name="custom" display-name-key="Custom N:1-1:N">1</value>
@@ -29,13 +29,18 @@
       <value name="false" display-name-key="No">0</value>
       <value name="true" display-name-key="Yes">1</value>
     </property>
-    <property name="outputField" display-name-key="Output Selected Field" description-key="The field to output the selected records as a JSON array. Can be the same as bound field" of-type="SingleLine.Text" usage="bound" required="false" />
+    <property name="outputField" display-name-key="Output Selected Field" description-key="The field to output the selected records as a JSON array. Can be the same as bound field" of-type-group="text" usage="bound" required="false" />
     <property name="lookupView" display-name-key="Lookup View" description-key="The view name for the suggestion list when searching. Use system Lookup View when empty or not found" of-type="SingleLine.Text" usage="input" required="false" />        
     <property name="itemLimit" display-name-key="Item Limit" description-key="Maximum number of selected items" of-type="Whole.None" usage="input" required="false" />
     <property name="allowQuickCreate" display-name-key="Allow Quick Create" description-key="Enable/disable the create button to quickly create a new option" of-type="Enum" usage="input" required="false" >
       <value name="false" display-name-key="No">0</value>
       <value name="true" display-name-key="Yes">1</value>
     </property>
+    <type-group name="text">
+      <type>SingleLine.Text</type>
+      <type>SingleLine.TextArea</type>
+      <type>Multiple</type>
+    </type-group>
     <!--
       Property node's of-type attribute can be of-type-group attribute.
       Example:
