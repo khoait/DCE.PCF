@@ -55,7 +55,8 @@ export function useSelectedItems(
   currentTable: string,
   currentRecordId: string,
   relationshipName: string,
-  metadata: IMetadata | undefined
+  metadata: IMetadata | undefined,
+  formType: XrmEnum.FormType | undefined
 ) {
   const associatedTable = metadata?.associatedEntity.LogicalName ?? "";
   const associatedIntesectAttribute =
@@ -82,7 +83,10 @@ export function useSelectedItems(
         metadata?.associatedEntity.PrimaryIdAttribute,
         metadata?.associatedEntity.PrimaryNameAttribute
       ),
-    enabled: !!metadata?.intersectEntity.EntitySetName && !!metadata?.associatedEntity.EntitySetName,
+    enabled:
+      !!metadata?.intersectEntity.EntitySetName &&
+      !!metadata?.associatedEntity.EntitySetName &&
+      formType === XrmEnum.FormType.Update,
   });
 }
 

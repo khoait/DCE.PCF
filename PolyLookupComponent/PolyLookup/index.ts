@@ -53,8 +53,10 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
       itemLimit: context.parameters.itemLimit.raw ?? undefined,
       pageSize: context.userSettings.pagingLimit ?? undefined,
       disabled: context.mode.isControlDisabled,
+      formType: typeof Xrm === "undefined" ? undefined : Xrm.Page.ui.getFormType(),
+      outputSelectedItems: !!context.parameters.outputField.attributes?.LogicalName,
       onChange:
-        context.parameters.outputSelected.raw === "1" || context.parameters.outputField.attributes
+        context.parameters.outputSelected.raw === "1" || context.parameters.outputField.attributes?.LogicalName
           ? this.onLookupChange
           : undefined,
       onQuickCreate: context.parameters.allowQuickCreate.raw === "1" ? this.onQuickCreate : undefined,
@@ -87,7 +89,11 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
     }
 
     if (this.context.parameters.outputField.attributes) {
-      this.outputSelectedItems = JSON.stringify(selectedItems);
+      if (!selectedItems?.length) {
+        this.outputSelectedItems = "";
+      } else {
+        this.outputSelectedItems = JSON.stringify(selectedItems);
+      }
     }
     this.notifyOutputChanged();
   };

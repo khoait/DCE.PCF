@@ -44,6 +44,8 @@ export interface PolyLookupProps {
   itemLimit?: number;
   pageSize?: number;
   disabled?: boolean;
+  formType?: XrmEnum.FormType;
+  outputSelectedItems?: boolean;
   onChange?: (selectedItems: ComponentFramework.EntityReference[] | undefined) => void;
   onQuickCreate?: (
     entityName: string | undefined,
@@ -67,6 +69,8 @@ const Body = ({
   itemLimit,
   pageSize,
   disabled,
+  formType,
+  outputSelectedItems,
   onChange,
   onQuickCreate,
 }: PolyLookupProps) => {
@@ -79,8 +83,40 @@ const Body = ({
     resultsMaximumNumber: (pageSize ?? 50) * 2,
     searchForMoreText: "Load more",
   };
+  const [selectedItemsCreate, setSelectedItemsCreate] = React.useState<ComponentFramework.WebApi.Entity[]>([]);
 
   const pickerRef = React.useRef<TagPickerBase>(null);
+
+  const getPlaceholder = () => {
+    if (formType === XrmEnum.FormType.Create) {
+      if (!outputSelectedItems) {
+        return "Please save the record first";
+      }
+    } else if (formType !== XrmEnum.FormType.Update) {
+      return "The control is not available in this form";
+    }
+
+    if (isDataLoading) {
+      return "Loading";
+    }
+
+    if (selectedItems?.length || selectedItemsCreate.length || disabled) {
+      return "";
+    }
+
+    return `Select ${metadata?.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label ?? "an item"}`;
+  };
+
+  const shouldDisable = () => {
+    if (formType === XrmEnum.FormType.Create) {
+      if (!outputSelectedItems) {
+        return true;
+      }
+    } else if (formType !== XrmEnum.FormType.Update) {
+      return true;
+    }
+    return false;
+  };
 
   const {
     data: metadata,
@@ -111,7 +147,7 @@ const Body = ({
     isLoading: isLoadingSelectedItems,
     isSuccess: isLoadingSelectedItemsSuccess,
     refetch: selectedItemsRefetch,
-  } = useSelectedItems(currentTable, currentRecordId, relationshipName, metadata);
+  } = useSelectedItems(currentTable, currentRecordId, relationshipName, metadata, formType);
 
   if (isLoadingSelectedItemsSuccess && onChange) {
     onChange(
@@ -211,26 +247,97 @@ const Body = ({
 
   const onPickerChange = useCallback(
     (selectedTags?: ITag[]): void => {
-      const removed = selectedItems
-        ?.filter(
+      if (formType === XrmEnum.FormType.Create) {
+        const removed = selectedItemsCreate?.filter(
           (i) =>
-            !selectedTags?.some(
-              (t) => (t.key as string)?.split(":")?.at(1) === i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
+            !selectedTags?.some((t) => {
+              const data = (t as ITagWithData).data;
+              return (
+                data[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ===
+                i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
+              );
+            })
+        );
+
+        const added = selectedTags
+          ?.filter((t) => {
+            const data = (t as ITagWithData).data;
+            return !selectedItemsCreate?.some(
+              (i) =>
+                i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ===
+                data[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
+            );
+          })
+          .map((t) => (t as ITagWithData).data);
+
+        const oldRemoved = selectedItemsCreate?.filter(
+          (o) =>
+            !removed?.some(
+              (r) =>
+                r[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ===
+                o[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
             )
-        )
-        .map((i) => i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]);
+        );
 
-      const added = selectedTags?.filter((t) => (t.key as string).indexOf(":") === -1).map((t) => t.key);
+        const newSelectedItems = [...oldRemoved, ...(added ?? [])];
+        setSelectedItemsCreate(newSelectedItems);
 
-      added?.forEach((id) => associateQuery.mutate(id as string));
-      removed?.forEach((id) => disassociateQuery.mutate(id as string));
+        if (onChange) {
+          onChange(
+            newSelectedItems?.map((i) => {
+              return {
+                id: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""],
+                name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""],
+                etn: metadata?.associatedEntity.LogicalName ?? "",
+              } as ComponentFramework.EntityReference;
+            })
+          );
+        }
+      } else if (formType === XrmEnum.FormType.Update) {
+        const removed = selectedItems
+          ?.filter(
+            (i) =>
+              !selectedTags?.some((t) => {
+                const data = (t as ITagWithData).data;
+                return (
+                  data[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ===
+                  i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
+                );
+              })
+          )
+          .map((i) => i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]);
+
+        const added = selectedTags
+          ?.filter((t) => {
+            const data = (t as ITagWithData).data;
+            return !selectedItems?.some(
+              (i) =>
+                i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ===
+                data[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
+            );
+          })
+          .map((t) => t.key);
+
+        added?.forEach((id) => associateQuery.mutate(id as string));
+        removed?.forEach((id) => disassociateQuery.mutate(id as string));
+      }
     },
-    [selectedItems, metadata?.associatedEntity.PrimaryIdAttribute]
+    [selectedItems, selectedItemsCreate, metadata?.associatedEntity.PrimaryIdAttribute]
   );
 
   const onItemSelected = useCallback(
     (item?: ITag): ITag | null => {
-      if (item && !selectedItems?.some((i) => i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] === item.key)) {
+      if (!item) return null;
+
+      if (
+        formType === XrmEnum.FormType.Create &&
+        !selectedItemsCreate?.some((i) => i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] === item.key)
+      ) {
+        return item;
+      } else if (
+        formType === XrmEnum.FormType.Update &&
+        !selectedItems?.some((i) => i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] === item.key)
+      ) {
         return item;
       }
       return null;
@@ -262,19 +369,14 @@ const Body = ({
     return ValidationState.invalid;
   };
 
-  const isDataLoading = isLoadingMetadata || isLoadingSuggestions || isLoadingSelectedItems;
+  const isDataLoading = (isLoadingMetadata || isLoadingSuggestions) && !shouldDisable();
 
   return (
     <TagPicker
       ref={pickerRef}
-      selectedItems={selectedItems?.map(
-        (i) =>
-          ({
-            key: `${i[metadata?.intersectEntity.PrimaryIdAttribute ?? ""]}:${
-              i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
-            }`,
-            name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""],
-          } as ITag)
+      selectedItems={getSuggestionTags(
+        formType === XrmEnum.FormType.Create ? selectedItemsCreate : selectedItems,
+        metadata
       )}
       onResolveSuggestions={filterSuggestions}
       onEmptyResolveSuggestions={showAllSuggestions}
@@ -304,7 +406,7 @@ const Body = ({
         return pickerStyles;
       }}
       pickerSuggestionsProps={pickerSuggestionsProps}
-      disabled={disabled}
+      disabled={disabled || shouldDisable()}
       onRenderItem={(props: ITagItemProps) => {
         if (disabled) {
           props.styles = { close: { display: "none" } };
@@ -325,11 +427,7 @@ const Body = ({
       }}
       resolveDelay={100}
       inputProps={{
-        placeholder: isDataLoading
-          ? "Loading"
-          : selectedItems?.length || disabled
-          ? ""
-          : `Select ${metadata?.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label ?? "an item"}`,
+        placeholder: getPlaceholder(),
       }}
       pickerCalloutProps={{
         calloutMaxWidth: 500,
