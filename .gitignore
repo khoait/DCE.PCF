@@ -102,3 +102,8 @@ dist
 
 # TernJS port file
 .tern-port
+/Samples/DCE.PCF/.vs
+/Samples/DCE.PCF/DCE.PCF.Plugins/bin
+/Samples/DCE.PCF/DCE.PCF.Plugins/obj
+/Samples/DCE.PCF/DCE.PCF.Plugins/spkl
+/Samples/DCE.PCF/packages

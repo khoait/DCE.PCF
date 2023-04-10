@@ -1,0 +1,18 @@
+{
+  "plugins": [
+    {
+      "profile": "default,debug",
+      "solution": "CourseManagement",
+      "assemblypath": "bin\\Debug",
+      "classRegex": "((public( sealed)? class (?'class'[\\w]*)[\\W]*?)((?'plugin':[\\W]*?((IPlugin)|(PluginBase)|(Plugin)))))",
+      "excludePluginSteps": false
+    },
+    {
+      "profile": "release",
+      "solution": "CourseManagement",
+      "assemblypath": "bin\\Release",
+      "classRegex": "((public( sealed)? class (?'class'[\\w]*)[\\W]*?)((?'plugin':[\\W]*?((IPlugin)|(PluginBase)|(Plugin)))|(?'wf':[\\W]*?CodeActivity)))",
+      "excludePluginSteps": false
+    }
+  ]
+}
