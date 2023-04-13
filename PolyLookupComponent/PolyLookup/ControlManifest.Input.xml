@@ -19,10 +19,10 @@
     </external-service-usage>
     <!-- property node identifies a specific, configurable piece of data that the control expects from CDS -->
     <property name="boundField" display-name-key="Bound Field" description-key="The field that the component is bound to" of-type-group="text" usage="bound" required="true" />
-    <property name="relationshipType" display-name-key="Relationship Type" description-key="Relationship type between tables: Many To Many, Custom N:N (future), Connection (future)" of-type="Enum" usage="input" required="true" >
+    <property name="relationshipType" display-name-key="Relationship Type" description-key="Relationship type between tables: Many To Many, Custom N:N, Connection" of-type="Enum" usage="input" required="true" >
       <value name="nton" display-name-key="Many To Many">0</value>
       <value name="custom" display-name-key="Custom N:1-1:N">1</value>
-      <value name="connection" display-name-key="Connection">2</value>
+      <value name="connection" display-name-key="Connection (future)">2</value>
     </property>
     <property name="relationship" display-name-key="Relationship Name" description-key="N-N: The relationship schema name to the associated table. Custom N-N: The relationship schema name from the current table to the intemediate table." of-type="SingleLine.Text" usage="input" required="true" />
     <property name="relationship2" display-name-key="Relationship 2 Name" description-key="N-N: Not applicable. Custom N-N: The relationship schema name from the intemediate table to the associated table" of-type="SingleLine.Text" usage="input" required="false" />
