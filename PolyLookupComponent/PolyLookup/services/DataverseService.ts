@@ -76,21 +76,9 @@ export function useSuggestions(
 export function useSelectedItems(
   currentTable: string,
   currentRecordId: string,
-  relationshipName: string,
   metadata: IMetadata | undefined,
   formType: XrmEnum.FormType | undefined
 ) {
-  const associatedTable = metadata?.associatedEntity.LogicalName ?? "";
-  const associatedIntesectAttribute =
-    metadata?.nnRelationship.Entity1LogicalName === currentTable
-      ? metadata?.nnRelationship.Entity2IntersectAttribute
-      : metadata?.nnRelationship.Entity1IntersectAttribute;
-
-  const currentIntesectAttribute =
-    metadata?.nnRelationship.Entity1LogicalName === currentTable
-      ? metadata?.nnRelationship?.Entity1IntersectAttribute
-      : metadata?.nnRelationship?.Entity2IntersectAttribute;
-
   return useQuery({
     queryKey: ["selectedItems", { currentTable, currentRecordId }],
     queryFn: () =>

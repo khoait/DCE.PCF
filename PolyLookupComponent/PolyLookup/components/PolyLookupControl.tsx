@@ -108,7 +108,7 @@ const Body = ({
       return "";
     }
 
-    return `Select ${metadata?.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label ?? "an item"}`;
+    return `Select ${metadata?.associatedEntity.DisplayCollectionNameLocalized ?? "an item"}`;
   };
 
   const shouldDisable = () => {
@@ -153,10 +153,10 @@ const Body = ({
   // get selected items
   const {
     data: selectedItems,
-    isLoading: isLoadingSelectedItems,
+    isInitialLoading: isLoadingSelectedItems,
     isSuccess: isLoadingSelectedItemsSuccess,
     refetch: selectedItemsRefetch,
-  } = useSelectedItems(currentTable, currentRecordId, relationshipName, metadata, formType);
+  } = useSelectedItems(currentTable, currentRecordId, metadata, formType);
 
   if (isLoadingSelectedItemsSuccess && onChange) {
     onChange(
@@ -329,7 +329,11 @@ const Body = ({
                 );
               })
           )
-          .map((i) => i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]);
+          .map((i) =>
+            relationshipType === RelationshipTypeEnum.ManyToMany
+              ? i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
+              : i[metadata?.intersectEntity.PrimaryIdAttribute ?? ""]
+          );
 
         const added = selectedTags
           ?.filter((t) => {
@@ -393,7 +397,7 @@ const Body = ({
     return ValidationState.invalid;
   };
 
-  const isDataLoading = (isLoadingMetadata || isLoadingSuggestions) && !shouldDisable();
+  const isDataLoading = (isLoadingMetadata || isLoadingSuggestions || isLoadingSelectedItems) && !shouldDisable();
 
   return (
     <TagPicker
