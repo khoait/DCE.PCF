@@ -174,7 +174,22 @@ const Body = ({
   const filterQuery = useMutation({
     mutationFn: ({ searchText, pageSizeParam }: { searchText: string; pageSizeParam: number | undefined }) => {
       let fetchXml = metadata?.associatedView.fetchxml ?? "";
+      let shouldDefaultSearch = false;
       if (!lookupView && metadata?.associatedView.querytype === 64) {
+        shouldDefaultSearch = true;
+      } else {
+        const currentRecord = getCurrentRecord();
+        if (!fetchXml.includes("{{PolyLookupSearch}}")) {
+          shouldDefaultSearch = true;
+        }
+
+        fetchXml = fetchXmlTemplate({
+          ...currentRecord,
+          PolyLookupSearch: searchText,
+        });
+      }
+
+      if (shouldDefaultSearch) {
         // if lookup view is not specified and using default lookup fiew,
         // add filter condition to fetchxml to support search
         const doc = parser.parseFromString(fetchXml, "application/xml");
@@ -192,13 +207,8 @@ const Body = ({
           }
         }
         fetchXml = serializer.serializeToString(doc);
-      } else {
-        const currentRecord = getCurrentRecord();
-        fetchXml = fetchXmlTemplate({
-          ...currentRecord,
-          PolyLookupSearch: searchText,
-        });
       }
+
       return retrieveMultipleFetch(associatedTableSetName, fetchXml, 1, pageSizeParam);
     },
   });
