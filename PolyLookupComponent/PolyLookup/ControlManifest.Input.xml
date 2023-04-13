@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DCEPCF" constructor="PolyLookup" version="1.0.17" display-name-key="PolyLookup v1.0.17" description-key="Multi-select lookup supporting different type of many-to-many relationships." control-type="virtual" >
+  <control namespace="DCEPCF" constructor="PolyLookup" version="1.1.0" display-name-key="PolyLookup v1.1.0" description-key="Multi-select lookup supporting different type of many-to-many relationships." control-type="virtual" >
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
     Example1:
@@ -19,12 +19,13 @@
     </external-service-usage>
     <!-- property node identifies a specific, configurable piece of data that the control expects from CDS -->
     <property name="boundField" display-name-key="Bound Field" description-key="The field that the component is bound to" of-type-group="text" usage="bound" required="true" />
-    <property name="relationshipType" display-name-key="Relationship Type" description-key="Relationship type between tables: Many To Many, Custom N:N (future), Connection (future)" of-type="Enum" usage="input" required="true" >
+    <property name="relationshipType" display-name-key="Relationship Type" description-key="Relationship type between tables: Many To Many, Custom N:N, Connection" of-type="Enum" usage="input" required="true" >
       <value name="nton" display-name-key="Many To Many">0</value>
       <value name="custom" display-name-key="Custom N:1-1:N">1</value>
-      <value name="connection" display-name-key="Connection">2</value>
+      <value name="connection" display-name-key="Connection (future)">2</value>
     </property>
-    <property name="relationship" display-name-key="Relationship Name" description-key="The relationship schema name to the associated table" of-type="SingleLine.Text" usage="input" required="true" />
+    <property name="relationship" display-name-key="Relationship Name" description-key="N-N: The relationship schema name to the associated table. Custom N-N: The relationship schema name from the current table to the intermediate table." of-type="SingleLine.Text" usage="input" required="true" />
+    <property name="relationship2" display-name-key="Relationship 2 Name" description-key="N-N: Not applicable. Custom N-N: The relationship schema name from the intermediate table to the associated table" of-type="SingleLine.Text" usage="input" required="false" />
     <property name="outputSelected" display-name-key="Should Output Selected Text" description-key="Whether output selected records as text to the Bound Field" of-type="Enum" usage="input" required="true" >
       <value name="false" display-name-key="No">0</value>
       <value name="true" display-name-key="Yes">1</value>

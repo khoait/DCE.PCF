@@ -11,6 +11,8 @@ import {
 import { QueryClient, QueryClientProvider, useMutation } from "@tanstack/react-query";
 import {
   associateRecord,
+  createRecord,
+  deleteRecord,
   disassociateRecord,
   getCurrentRecord,
   retrieveMultipleFetch,
@@ -38,6 +40,7 @@ export interface PolyLookupProps {
   currentTable: string;
   currentRecordId: string;
   relationshipName: string;
+  relationship2Name: string | undefined;
   relationshipType: RelationshipTypeEnum;
   clientUrl: string;
   lookupView?: string;
@@ -63,6 +66,7 @@ const Body = ({
   currentTable,
   currentRecordId,
   relationshipName,
+  relationship2Name,
   relationshipType,
   clientUrl,
   lookupView,
@@ -104,7 +108,7 @@ const Body = ({
       return "";
     }
 
-    return `Select ${metadata?.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label ?? "an item"}`;
+    return `Select ${metadata?.associatedEntity.DisplayCollectionNameLocalized ?? "an item"}`;
   };
 
   const shouldDisable = () => {
@@ -122,11 +126,16 @@ const Body = ({
     data: metadata,
     isLoading: isLoadingMetadata,
     isSuccess: isLoadingMetadataSuccess,
-  } = useMetadata(currentTable, relationshipName, lookupView);
+  } = useMetadata(
+    currentTable,
+    relationshipName,
+    relationshipType === RelationshipTypeEnum.Custom ? relationship2Name ?? undefined : undefined,
+    lookupView
+  );
 
   if (metadata && isLoadingMetadataSuccess) {
-    pickerSuggestionsProps.suggestionsHeaderText = `Suggested ${metadata.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label}`;
-    pickerSuggestionsProps.noResultsFoundText = `No ${metadata.associatedEntity.DisplayCollectionName.UserLocalizedLabel.Label} found`;
+    pickerSuggestionsProps.suggestionsHeaderText = `Suggested ${metadata.associatedEntity.DisplayCollectionNameLocalized}`;
+    pickerSuggestionsProps.noResultsFoundText = `No ${metadata.associatedEntity.DisplayCollectionNameLocalized} found`;
   }
 
   const associatedTableSetName = metadata?.associatedEntity.EntitySetName ?? "";
@@ -144,10 +153,10 @@ const Body = ({
   // get selected items
   const {
     data: selectedItems,
-    isLoading: isLoadingSelectedItems,
+    isInitialLoading: isLoadingSelectedItems,
     isSuccess: isLoadingSelectedItemsSuccess,
     refetch: selectedItemsRefetch,
-  } = useSelectedItems(currentTable, currentRecordId, relationshipName, metadata, formType);
+  } = useSelectedItems(currentTable, currentRecordId, metadata, formType);
 
   if (isLoadingSelectedItemsSuccess && onChange) {
     onChange(
@@ -165,7 +174,22 @@ const Body = ({
   const filterQuery = useMutation({
     mutationFn: ({ searchText, pageSizeParam }: { searchText: string; pageSizeParam: number | undefined }) => {
       let fetchXml = metadata?.associatedView.fetchxml ?? "";
+      let shouldDefaultSearch = false;
       if (!lookupView && metadata?.associatedView.querytype === 64) {
+        shouldDefaultSearch = true;
+      } else {
+        const currentRecord = getCurrentRecord();
+        if (!fetchXml.includes("{{PolyLookupSearch}}")) {
+          shouldDefaultSearch = true;
+        }
+
+        fetchXml = fetchXmlTemplate({
+          ...currentRecord,
+          PolyLookupSearch: searchText,
+        });
+      }
+
+      if (shouldDefaultSearch) {
         // if lookup view is not specified and using default lookup fiew,
         // add filter condition to fetchxml to support search
         const doc = parser.parseFromString(fetchXml, "application/xml");
@@ -183,28 +207,32 @@ const Body = ({
           }
         }
         fetchXml = serializer.serializeToString(doc);
-      } else {
-        const currentRecord = getCurrentRecord();
-        fetchXml = fetchXmlTemplate({
-          ...currentRecord,
-          PolyLookupSearch: searchText,
-        });
       }
+
       return retrieveMultipleFetch(associatedTableSetName, fetchXml, 1, pageSizeParam);
     },
   });
 
   // associate query
   const associateQuery = useMutation({
-    mutationFn: (id: string) =>
-      associateRecord(
-        metadata?.currentEntity.EntitySetName,
-        currentRecordId,
-        metadata?.associatedEntity?.EntitySetName,
-        id,
-        relationshipName,
-        clientUrl
-      ),
+    mutationFn: (id: string) => {
+      if (relationshipType === RelationshipTypeEnum.ManyToMany) {
+        return associateRecord(
+          metadata?.currentEntity.EntitySetName,
+          currentRecordId,
+          metadata?.associatedEntity?.EntitySetName,
+          id,
+          relationshipName,
+          clientUrl
+        );
+      } else if (relationshipType === RelationshipTypeEnum.Custom) {
+        return createRecord(metadata?.intersectEntity.EntitySetName, {
+          [`${metadata?.currentIntesectAttribute}@odata.bind`]: `/${metadata?.currentEntity.EntitySetName}(${currentRecordId})`,
+          [`${metadata?.associatedIntesectAttribute}@odata.bind`]: `/${metadata?.associatedEntity.EntitySetName}(${id})`,
+        });
+      }
+      return Promise.reject("Relationship type not supported");
+    },
     onSuccess: (data, variables, context) => {
       selectedItemsRefetch();
     },
@@ -212,8 +240,14 @@ const Body = ({
 
   // disassociate query
   const disassociateQuery = useMutation({
-    mutationFn: (id: string) =>
-      disassociateRecord(metadata?.currentEntity?.EntitySetName, currentRecordId, relationshipName, id),
+    mutationFn: (id: string) => {
+      if (relationshipType === RelationshipTypeEnum.ManyToMany) {
+        return disassociateRecord(metadata?.currentEntity?.EntitySetName, currentRecordId, relationshipName, id);
+      } else if (relationshipType === RelationshipTypeEnum.Custom) {
+        return deleteRecord(metadata?.intersectEntity.EntitySetName, id);
+      }
+      return Promise.reject("Relationship type not supported");
+    },
     onSuccess: (data, variables, context) => {
       selectedItemsRefetch();
     },
@@ -305,7 +339,11 @@ const Body = ({
                 );
               })
           )
-          .map((i) => i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]);
+          .map((i) =>
+            relationshipType === RelationshipTypeEnum.ManyToMany
+              ? i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
+              : i[metadata?.intersectEntity.PrimaryIdAttribute ?? ""]
+          );
 
         const added = selectedTags
           ?.filter((t) => {
@@ -369,7 +407,7 @@ const Body = ({
     return ValidationState.invalid;
   };
 
-  const isDataLoading = (isLoadingMetadata || isLoadingSuggestions) && !shouldDisable();
+  const isDataLoading = (isLoadingMetadata || isLoadingSuggestions || isLoadingSelectedItems) && !shouldDisable();
 
   return (
     <TagPicker
