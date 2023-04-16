@@ -50,26 +50,27 @@ export function useMetadata(
   lookupView: string | undefined
 ) {
   return useQuery({
-    queryKey: ["metadata", { currentTable, relationshipName, relationship2Name, lookupView }],
+    queryKey: [`${relationshipName}_metadata`, { currentTable, relationshipName, relationship2Name, lookupView }],
     queryFn: () => getMetadata(currentTable, relationshipName, relationship2Name, lookupView),
     enabled: !!currentTable && !!relationshipName,
   });
 }
 
 export function useSuggestions(
+  relationshipName: string,
   associatedTableSetName: string,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   fetchXmlTemplate: HandlebarsTemplateDelegate<any>,
   pageSize: number | undefined
 ) {
   return useQuery({
-    queryKey: ["suggestionItems", { associatedTableSetName, pageSize }],
+    queryKey: [`${relationshipName}_suggestionItems`, { associatedTableSetName, pageSize }],
     queryFn: () => {
       const currentRecord = getCurrentRecord();
       const fetchXml = fetchXmlTemplate(currentRecord);
       return retrieveMultipleFetch(associatedTableSetName, fetchXml, 1, pageSize);
     },
-    enabled: !!associatedTableSetName,
+    enabled: !!relationshipName && !!associatedTableSetName,
   });
 }
 
@@ -80,7 +81,7 @@ export function useSelectedItems(
   formType: XrmEnum.FormType | undefined
 ) {
   return useQuery({
-    queryKey: ["selectedItems", { currentTable, currentRecordId }],
+    queryKey: [`${metadata?.relationship1.SchemaName}_selectedItems`, { currentTable, currentRecordId }],
     queryFn: () =>
       retrieveAssociatedRecords(
         currentRecordId,
