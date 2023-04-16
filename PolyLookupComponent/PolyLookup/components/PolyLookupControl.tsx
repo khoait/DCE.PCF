@@ -145,6 +145,7 @@ const Body = ({
 
   // get top 50 suggestions from associated table
   const { data: suggestions, isLoading: isLoadingSuggestions } = useSuggestions(
+    relationshipName,
     associatedTableSetName,
     fetchXmlTemplate,
     pageSize
