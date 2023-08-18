@@ -362,7 +362,7 @@ export async function retrieveAssociatedRecords(
       <filter>
         <condition attribute="${currentIntersectAttribute}" operator="eq" value="${currentRecordId}" />
       </filter>
-      <link-entity name="${associatedEntity}" from="${associatedIntersectAttribute}" to="${associatedEntityPrimaryIdAttribute}" alias="aLink">
+      <link-entity name="${associatedEntity}" from="${associatedEntityPrimaryIdAttribute}" to="${associatedIntersectAttribute}" alias="aLink">
         <attribute name="${associatedEntityPrimaryIdAttribute}" />  
         <attribute name="${associatedEntityPrimaryNameAttribute}" />
       </link-entity>
