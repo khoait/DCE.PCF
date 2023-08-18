@@ -180,7 +180,12 @@ const Body = ({
         shouldDefaultSearch = true;
       } else {
         const currentRecord = getCurrentRecord();
-        if (!fetchXml.includes("{{PolyLookupSearch}}")) {
+        if (
+          !fetchXml.includes("{{PolyLookupSearch}}") &&
+          !fetchXml.includes("{{ PolyLookupSearch}}") &&
+          !fetchXml.includes("{{PolyLookupSearch }}") &&
+          !fetchXml.includes("{{ PolyLookupSearch }}")
+        ) {
           shouldDefaultSearch = true;
         }
 
