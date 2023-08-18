@@ -50,7 +50,10 @@ export function useMetadata(
   lookupView: string | undefined
 ) {
   return useQuery({
-    queryKey: [`${relationshipName}_metadata`, { currentTable, relationshipName, relationship2Name, lookupView }],
+    queryKey: [
+      `${relationshipName}_${lookupView}_metadata`,
+      { currentTable, relationshipName, relationship2Name, lookupView },
+    ],
     queryFn: () => getMetadata(currentTable, relationshipName, relationship2Name, lookupView),
     enabled: !!currentTable && !!relationshipName,
   });
@@ -181,9 +184,6 @@ export async function getViewDefinition(
 ) {
   if (typeof entityName === "undefined") return Promise.reject(new Error("Invalid arguments"));
 
-  if (typeof viewName === "undefined" && typeof queryType === "undefined")
-    return Promise.reject(new Error("Invalid arguments"));
-
   const result = await axios.get<{ value: IViewDefinition[] }>(`/api/data/v${apiVersion}/savedqueries`, {
     params: {
       $filter: `returnedtypecode eq '${entityName}' ${viewName ? `and name eq '${viewName}'` : ""} ${
@@ -200,8 +200,10 @@ export async function getViewDefinition(
 }
 
 export async function getDefaultView(entityName: string | undefined, viewName: string | undefined) {
-  const viewByName = await getViewDefinition(entityName, viewName);
-  if (viewByName) return viewByName;
+  if (viewName) {
+    const viewByName = await getViewDefinition(entityName, viewName);
+    if (viewByName) return viewByName;
+  }
 
   const defaultView = await getViewDefinition(entityName, undefined, 64);
   return defaultView;
