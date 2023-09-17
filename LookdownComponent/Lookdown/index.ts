@@ -5,7 +5,7 @@ import * as React from "react";
 export class Lookdown implements ComponentFramework.ReactControl<IInputs, IOutputs> {
   private theComponent: ComponentFramework.ReactControl<IInputs, IOutputs>;
   private notifyOutputChanged: () => void;
-  private output: ComponentFramework.LookupValue | undefined;
+  private output: ComponentFramework.LookupValue | null;
   private context: ComponentFramework.Context<IInputs>;
 
   /**
@@ -42,6 +42,10 @@ export class Lookdown implements ComponentFramework.ReactControl<IInputs, IOutpu
       lookupViewId: context.parameters.lookupField.getViewId(),
       lookupEntity: context.parameters.lookupField.getTargetEntityType(),
       selectedId: context.parameters.lookupField.raw.at(0)?.id,
+      onChange: (value) => {
+        this.output = value;
+        this.notifyOutputChanged();
+      },
     });
   }
 
