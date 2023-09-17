@@ -1,6 +1,7 @@
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Dropdown, DropdownMenuItemType, IStyle } from "@fluentui/react";
+import { Dropdown, DropdownMenuItemType, IStyle, IDropdownOption } from "@fluentui/react";
+import { useFetchXmlData, useMetadata } from "../services/DataverseService";
 
 const queryClient = new QueryClient();
 
@@ -8,6 +9,7 @@ export interface LookdownProps {
   lookupViewId: string;
   lookupEntity: string;
   selectedId: string | undefined;
+  onChange?: (selectedItem: ComponentFramework.LookupValue | null) => void;
 }
 
 const DEFAULT_BORDER_STYLES: IStyle = {
@@ -16,24 +18,52 @@ const DEFAULT_BORDER_STYLES: IStyle = {
   borderRadius: 0,
 };
 
-const dropdownControlledExampleOptions = [
-  { key: "fruitsHeader", text: "Fruits", itemType: DropdownMenuItemType.Header },
-  { key: "apple", text: "Apple" },
-  { key: "banana", text: "Banana" },
-  { key: "orange", text: "Orange", disabled: true },
-  { key: "grape", text: "Grape" },
-  { key: "vegetablesHeader", text: "Vegetables", itemType: DropdownMenuItemType.Header },
-  { key: "broccoli", text: "Broccoli" },
-  { key: "carrot", text: "Carrot" },
-  { key: "lettuce", text: "Lettuce" },
-];
+const Body = ({ lookupViewId, lookupEntity, selectedId, onChange }: LookdownProps) => {
+  const {
+    data: metadata,
+    isLoading: isLoadingMetadata,
+    isSuccess: isLoadingMetadataSuccess,
+  } = useMetadata(lookupEntity, lookupViewId);
 
-const Body = ({ lookupViewId, lookupEntity, selectedId }: LookdownProps) => {
+  const {
+    data: fetchData,
+    isLoading: isLoadingFetchData,
+    isSuccess: isLoadingFetchDataSuccess,
+  } = useFetchXmlData(metadata?.lookupEntity.EntitySetName ?? "", lookupViewId, metadata?.lookupView.fetchxml ?? "");
+
+  const dropdownOptions: IDropdownOption<ComponentFramework.WebApi.Entity>[] =
+    metadata && fetchData
+      ? fetchData.map((item) => {
+          return {
+            key: item[metadata.lookupEntity.PrimaryIdAttribute],
+            text: item[metadata.lookupEntity.PrimaryNameAttribute],
+            data: item,
+          };
+        })
+      : [];
+
   return (
     <Dropdown
-      selectedKey={undefined}
+      selectedKey={selectedId ?? undefined}
       placeholder="---"
-      options={dropdownControlledExampleOptions}
+      options={dropdownOptions}
+      onChange={(event, option) => {
+        if (!onChange) return;
+        if (!metadata) return;
+
+        if (!option) {
+          onChange(null);
+          return;
+        }
+
+        const data = option.data as ComponentFramework.WebApi.Entity;
+        const selectedItem = {
+          entityType: metadata.lookupEntity.LogicalName,
+          id: data[metadata.lookupEntity.PrimaryIdAttribute],
+          name: data[metadata.lookupEntity.PrimaryNameAttribute],
+        } as ComponentFramework.LookupValue;
+        onChange(selectedItem);
+      }}
       styles={(styleProps) => {
         return {
           root: {
@@ -70,6 +100,9 @@ const Body = ({ lookupViewId, lookupEntity, selectedId }: LookdownProps) => {
           },
           caretDownWrapper: {
             display: styleProps.isOpen ? "block" : "none",
+          },
+          callout: {
+            maxHeight: 500,
           },
         };
       }}
