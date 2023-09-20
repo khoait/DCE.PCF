@@ -8,7 +8,8 @@ const queryClient = new QueryClient();
 export interface LookdownProps {
   lookupViewId: string;
   lookupEntity: string;
-  selectedId: string | undefined;
+  selectedId?: string | null;
+  groupBy?: string | null;
   onChange?: (selectedItem: ComponentFramework.LookupValue | null) => void;
 }
 
@@ -18,7 +19,7 @@ const DEFAULT_BORDER_STYLES: IStyle = {
   borderRadius: 0,
 };
 
-const Body = ({ lookupViewId, lookupEntity, selectedId, onChange }: LookdownProps) => {
+const Body = ({ lookupViewId, lookupEntity, selectedId, groupBy, onChange }: LookdownProps) => {
   const {
     data: metadata,
     isLoading: isLoadingMetadata,
@@ -29,24 +30,63 @@ const Body = ({ lookupViewId, lookupEntity, selectedId, onChange }: LookdownProp
     data: fetchData,
     isLoading: isLoadingFetchData,
     isSuccess: isLoadingFetchDataSuccess,
-  } = useFetchXmlData(metadata?.lookupEntity.EntitySetName ?? "", lookupViewId, metadata?.lookupView.fetchxml ?? "");
+  } = useFetchXmlData(metadata?.lookupEntity.EntitySetName, lookupViewId, metadata?.lookupView.fetchxml, groupBy);
 
-  const dropdownOptions: IDropdownOption<ComponentFramework.WebApi.Entity>[] =
-    metadata && fetchData
-      ? fetchData.map((item) => {
-          return {
+  const getDropdownOptions = (): IDropdownOption<ComponentFramework.WebApi.Entity>[] => {
+    if (!metadata) return [];
+    if (!fetchData) return [];
+
+    let options: IDropdownOption<ComponentFramework.WebApi.Entity>[] = [];
+
+    // group results by groupBy field
+    if (groupBy) {
+      const grouped: Record<string, ComponentFramework.WebApi.Entity[]> = {};
+      fetchData.forEach((item) => {
+        let key = item[groupBy]?.toString() ?? "(Blank)";
+
+        // use formatted value if available
+        const formattedValue = item[groupBy + "@OData.Community.Display.V1.FormattedValue"];
+        if (formattedValue && formattedValue !== "") {
+          key = formattedValue;
+        }
+
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(item);
+      });
+
+      Object.keys(grouped).forEach((key) => {
+        options.push({
+          key: key,
+          text: key,
+          itemType: DropdownMenuItemType.Header,
+        });
+
+        grouped[key].forEach((item) => {
+          options.push({
             key: item[metadata.lookupEntity.PrimaryIdAttribute],
             text: item[metadata.lookupEntity.PrimaryNameAttribute],
             data: item,
-          };
-        })
-      : [];
+          });
+        });
+      });
+    } else {
+      options = fetchData.map((item) => {
+        return {
+          key: item[metadata.lookupEntity.PrimaryIdAttribute],
+          text: item[metadata.lookupEntity.PrimaryNameAttribute],
+          data: item,
+        };
+      });
+    }
+
+    return options;
+  };
 
   return (
     <Dropdown
       selectedKey={selectedId ?? undefined}
       placeholder="---"
-      options={dropdownOptions}
+      options={getDropdownOptions()}
       onChange={(event, option) => {
         if (!onChange) return;
         if (!metadata) return;
@@ -103,6 +143,9 @@ const Body = ({ lookupViewId, lookupEntity, selectedId, onChange }: LookdownProp
           },
           callout: {
             maxHeight: 500,
+            "& .ms-Callout-main": {
+              maxHeight: "500px !important",
+            },
           },
         };
       }}
