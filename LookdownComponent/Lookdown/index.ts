@@ -42,6 +42,7 @@ export class Lookdown implements ComponentFramework.ReactControl<IInputs, IOutpu
       lookupViewId: context.parameters.lookupField.getViewId(),
       lookupEntity: context.parameters.lookupField.getTargetEntityType(),
       selectedId: context.parameters.lookupField.raw.at(0)?.id,
+      groupBy: context.parameters.groupByField.raw,
       onChange: (value) => {
         this.output = value;
         this.notifyOutputChanged();

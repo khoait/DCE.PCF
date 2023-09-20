@@ -16,19 +16,24 @@ const viewDefinitionColumns = ["savedqueryid", "name", "fetchxml", "layoutjson",
 
 const apiVersion = "9.2";
 
-export function useMetadata(lookupTable: string, lookupViewId: string) {
+export function useMetadata(lookupTable: string | undefined, lookupViewId: string | undefined) {
   return useQuery({
     queryKey: [`${lookupTable}_${lookupViewId}_metadata`, { lookupTable, lookupViewId }],
-    queryFn: () => getMetadata(lookupTable, lookupViewId),
+    queryFn: () => getMetadata(lookupTable ?? "", lookupViewId ?? ""),
     enabled: !!lookupTable && !!lookupViewId,
   });
 }
 
-export function useFetchXmlData(entitySetName: string, lookupViewId: string, fetchXml: string) {
+export function useFetchXmlData(
+  entitySetName: string | undefined,
+  lookupViewId: string | undefined,
+  fetchXml: string | undefined,
+  groupBy?: string | null
+) {
   return useQuery({
     queryKey: [`${entitySetName}_${lookupViewId}_fetchdata`, { entitySetName, lookupViewId }],
     queryFn: () => {
-      return retrieveMultipleFetch(entitySetName, fetchXml);
+      return retrieveMultipleFetch(entitySetName ?? "", fetchXml ?? "", groupBy);
     },
     enabled: !!entitySetName && !!lookupViewId && !!fetchXml,
   });
@@ -84,11 +89,18 @@ async function getViewDefinition(viewId: string) {
   return view;
 }
 
-async function retrieveMultipleFetch(entitySetName: string, fetchXml: string) {
+async function retrieveMultipleFetch(entitySetName: string, fetchXml: string, groupBy?: string | null) {
   if (!entitySetName || !fetchXml) return Promise.reject(new Error("Invalid entity set name or fetchXml"));
 
   const doc = new DOMParser().parseFromString(fetchXml, "application/xml");
   doc.documentElement.setAttribute("count", "5000");
+
+  if (groupBy && !doc.querySelector(`attribute[name="${groupBy}"]`)) {
+    const entity = doc.querySelector("entity");
+    const attribute = doc.createElement("attribute");
+    attribute.setAttribute("name", groupBy);
+    entity?.appendChild(attribute);
+  }
 
   const newFetchXml = new XMLSerializer().serializeToString(doc);
 
@@ -101,5 +113,7 @@ async function retrieveMultipleFetch(entitySetName: string, fetchXml: string) {
         fetchXml: encodeURIComponent(newFetchXml),
       },
     })
-    .then((res) => res.data.value);
+    .then((res) => {
+      return res.data.value;
+    });
 }
