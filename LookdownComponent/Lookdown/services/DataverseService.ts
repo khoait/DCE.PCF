@@ -10,13 +10,17 @@ const tableDefinitionColumns = [
   "EntitySetName",
   "DisplayCollectionName",
   "IsQuickCreateEnabled",
+  "IconVectorName",
+  "IconSmallName",
+  "IconMediumName",
+  "PrimaryImageAttribute",
 ];
 
 const viewDefinitionColumns = ["savedqueryid", "name", "fetchxml", "layoutjson", "querytype"];
 
 const apiVersion = "9.2";
 
-export function useMetadata(lookupTable: string | undefined, lookupViewId: string | undefined) {
+export function useMetadata(lookupTable: string | undefined, lookupViewId: string | undefined, entityIcon = false) {
   return useQuery({
     queryKey: [`${lookupTable}_${lookupViewId}_metadata`, { lookupTable, lookupViewId }],
     queryFn: () => getMetadata(lookupTable ?? "", lookupViewId ?? ""),
@@ -61,10 +65,26 @@ async function getEntityDefinition(entityName: string): Promise<IEntityDefinitio
           },
         })
         .then((res) => {
+          const {
+            EntitySetName,
+            PrimaryIdAttribute,
+            DisplayName,
+            DisplayCollectionName,
+            IconVectorName,
+            IconSmallName,
+            IconMediumName,
+            PrimaryImageAttribute,
+          } = res.data;
           return {
             ...res.data,
-            DisplayNameLocalized: res.data.DisplayName.UserLocalizedLabel?.Label ?? "",
-            DisplayCollectionNameLocalized: res.data.DisplayCollectionName.UserLocalizedLabel?.Label ?? "",
+            DisplayNameLocalized: DisplayName.UserLocalizedLabel?.Label ?? "",
+            DisplayCollectionNameLocalized: DisplayCollectionName.UserLocalizedLabel?.Label ?? "",
+            IconVectorName: IconVectorName ? `/WebResources/${IconVectorName}` : undefined,
+            IconSmallName: IconSmallName ? `/WebResources/${IconSmallName}` : undefined,
+            IconMediumName: IconMediumName ? `/WebResources/${IconMediumName}` : undefined,
+            RecordImageUrlTemplate: PrimaryImageAttribute
+              ? `/api/data/v${apiVersion}/${EntitySetName}({{${PrimaryIdAttribute}}})/${PrimaryImageAttribute}/$value`
+              : undefined,
           } as IEntityDefinition;
         });
 }

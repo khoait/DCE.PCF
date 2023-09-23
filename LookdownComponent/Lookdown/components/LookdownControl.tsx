@@ -1,15 +1,39 @@
 import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Dropdown, DropdownMenuItemType, IStyle, IDropdownOption } from "@fluentui/react";
+import {
+  Dropdown,
+  DropdownMenuItemType,
+  IStyle,
+  IDropdownOption,
+  Stack,
+  Image,
+  Label,
+  ImageFit,
+  ILabelStyles,
+} from "@fluentui/react";
 import { useFetchXmlData, useMetadata } from "../services/DataverseService";
+import Handlebars from "handlebars";
 
 const queryClient = new QueryClient();
+
+export enum ShowIconOptions {
+  None = 0,
+  EntityIcon = 1,
+  RecordImage = 2,
+}
+
+export enum IconSizes {
+  Normal = 0,
+  Large = 1,
+}
 
 export interface LookdownProps {
   lookupViewId: string;
   lookupEntity: string;
   selectedId?: string | null;
   groupBy?: string | null;
+  showIcon?: ShowIconOptions;
+  iconSize?: IconSizes;
   onChange?: (selectedItem: ComponentFramework.LookupValue | null) => void;
 }
 
@@ -19,12 +43,39 @@ const DEFAULT_BORDER_STYLES: IStyle = {
   borderRadius: 0,
 };
 
-const Body = ({ lookupViewId, lookupEntity, selectedId, groupBy, onChange }: LookdownProps) => {
+const groupLabelStyles: ILabelStyles = {
+  root: {
+    fontWeight: 600,
+    color: "#0078d4",
+  },
+};
+
+const optionLabelStyles: ILabelStyles = {
+  root: {
+    fontWeight: 400,
+  },
+};
+
+const selectionOptionLabelStyles: ILabelStyles = {
+  root: {
+    flex: 1,
+    padding: 0,
+    fontWeight: 600,
+    "&:active": {
+      fontWeight: 400,
+    },
+    "&:hover": {
+      fontWeight: 400,
+    },
+  },
+};
+
+const Body = ({ lookupViewId, lookupEntity, selectedId, groupBy, showIcon, iconSize, onChange }: LookdownProps) => {
   const {
     data: metadata,
     isLoading: isLoadingMetadata,
     isSuccess: isLoadingMetadataSuccess,
-  } = useMetadata(lookupEntity, lookupViewId);
+  } = useMetadata(lookupEntity, lookupViewId, showIcon === ShowIconOptions.EntityIcon);
 
   const {
     data: fetchData,
@@ -82,6 +133,76 @@ const Body = ({ lookupViewId, lookupEntity, selectedId, groupBy, onChange }: Loo
     return options;
   };
 
+  const entityIcon =
+    metadata?.lookupEntity.IconVectorName ??
+    metadata?.lookupEntity.IconSmallName ??
+    metadata?.lookupEntity.IconMediumName;
+
+  const recordImageTemplate =
+    showIcon === ShowIconOptions.RecordImage
+      ? Handlebars.compile(metadata?.lookupEntity.RecordImageUrlTemplate ?? "")
+      : null;
+
+  const imgSize = iconSize === IconSizes.Large ? 32 : 16;
+
+  const onRenderOption = (
+    option?: IDropdownOption<ComponentFramework.WebApi.Entity>,
+    defaultRenderer?: (option?: IDropdownOption<ComponentFramework.WebApi.Entity>) => JSX.Element | null
+  ) => {
+    if (!option || !showIcon) {
+      return defaultRenderer ? defaultRenderer(option) : null;
+    }
+
+    let imgSrc;
+
+    if (showIcon === ShowIconOptions.EntityIcon) {
+      imgSrc = entityIcon;
+    } else if (showIcon === ShowIconOptions.RecordImage) {
+      if (metadata && metadata.lookupEntity.RecordImageUrlTemplate && option.data && recordImageTemplate) {
+        imgSrc = recordImageTemplate(option.data);
+      }
+    }
+
+    const isGroup = option.itemType === DropdownMenuItemType.Header;
+
+    return (
+      <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+        {imgSrc && !isGroup ? (
+          <Image imageFit={ImageFit.cover} src={imgSrc} width={imgSize} height={imgSize}></Image>
+        ) : null}
+        <Label styles={isGroup ? groupLabelStyles : optionLabelStyles}>{option.text}</Label>
+      </Stack>
+    );
+  };
+
+  const onRenderSelectedOption = (
+    options?: IDropdownOption<ComponentFramework.WebApi.Entity>[],
+    defaultRenderer?: (options?: IDropdownOption<ComponentFramework.WebApi.Entity>[]) => JSX.Element | null
+  ) => {
+    const option = options?.at(0);
+
+    if (!option || !showIcon) {
+      return defaultRenderer ? defaultRenderer(options) : null;
+    }
+
+    let imgSrc;
+
+    if (showIcon === ShowIconOptions.EntityIcon) {
+      imgSrc = entityIcon;
+    } else if (showIcon === ShowIconOptions.RecordImage) {
+      if (metadata && metadata.lookupEntity.RecordImageUrlTemplate && option.data && recordImageTemplate) {
+        imgSrc = recordImageTemplate(option.data);
+      }
+    }
+
+    return (
+      <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
+        {imgSrc ? <Image imageFit={ImageFit.cover} src={imgSrc} width={imgSize} height={imgSize}></Image> : null}
+        <Label styles={selectionOptionLabelStyles}>{option.text}</Label>
+      </Stack>
+    );
+  };
+
   return (
     <Dropdown
       selectedKey={selectedId ?? undefined}
@@ -104,6 +225,8 @@ const Body = ({ lookupViewId, lookupEntity, selectedId, groupBy, onChange }: Loo
         } as ComponentFramework.LookupValue;
         onChange(selectedItem);
       }}
+      onRenderOption={showIcon ? onRenderOption : undefined}
+      onRenderTitle={showIcon ? onRenderSelectedOption : undefined}
       styles={(styleProps) => {
         return {
           root: {
