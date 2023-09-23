@@ -1,4 +1,4 @@
-import LookdownControl from "./components/LookdownControl";
+import LookdownControl, { IconSizes, ShowIconOptions } from "./components/LookdownControl";
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import * as React from "react";
 
@@ -38,11 +38,18 @@ export class Lookdown implements ComponentFramework.ReactControl<IInputs, IOutpu
    */
   public updateView(context: ComponentFramework.Context<IInputs>): React.ReactElement {
     this.context = context;
+
     return React.createElement(LookdownControl, {
       lookupViewId: context.parameters.lookupField.getViewId(),
       lookupEntity: context.parameters.lookupField.getTargetEntityType(),
       selectedId: context.parameters.lookupField.raw.at(0)?.id,
       groupBy: context.parameters.groupByField.raw,
+      showIcon: context.parameters.showIcon.raw
+        ? (Number.parseInt(context.parameters.showIcon.raw) as ShowIconOptions)
+        : undefined,
+      iconSize: context.parameters.iconSize.raw
+        ? (Number.parseInt(context.parameters.iconSize.raw) as IconSizes)
+        : undefined,
       onChange: (value) => {
         this.output = value;
         this.notifyOutputChanged();

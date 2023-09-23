@@ -15,7 +15,12 @@ export interface IEntityDefinition {
     } | null;
   };
   DisplayCollectionNameLocalized: string;
-  IsQuickCreateEnabled: boolean;
+  IsQuickCreateEnabled?: boolean;
+  IconVectorName?: string;
+  IconSmallName?: string;
+  IconMediumName?: string;
+  PrimaryImageAttribute?: string;
+  RecordImageUrlTemplate?: string;
 }
 
 interface IViewRow {
