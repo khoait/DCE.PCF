@@ -21,7 +21,11 @@ const viewDefinitionColumns = ["savedqueryid", "name", "fetchxml", "layoutjson",
 
 const apiVersion = "9.2";
 
-export function useMetadata(lookupTable: string | undefined, lookupViewId: string | undefined, entityIcon = false) {
+export function useMetadata(
+  lookupTable: string | null | undefined,
+  lookupViewId: string | null | undefined,
+  entityIcon = false
+) {
   return useQuery({
     queryKey: [`${lookupTable}_${lookupViewId}_metadata`, { lookupTable, lookupViewId }],
     queryFn: () => getMetadata(lookupTable ?? "", lookupViewId ?? ""),
@@ -30,8 +34,8 @@ export function useMetadata(lookupTable: string | undefined, lookupViewId: strin
 }
 
 export function useFetchXmlData(
-  entitySetName: string | undefined,
-  lookupViewId: string | undefined,
+  entitySetName: string | null | undefined,
+  lookupViewId: string | null | undefined,
   fetchXml: string | undefined,
   customFilter?: string | null,
   groupBy?: string | null
@@ -48,7 +52,7 @@ export function useFetchXmlData(
 async function getMetadata(lookupTable: string, lookupViewId: string): Promise<IMetadata> {
   const [lookupEntity, lookupView] = await Promise.all([
     getEntityDefinition(lookupTable),
-    getViewDefinition(lookupViewId),
+    getViewDefinition(lookupTable, lookupViewId),
   ]);
 
   return {
@@ -91,12 +95,38 @@ async function getEntityDefinition(entityName: string): Promise<IEntityDefinitio
         });
 }
 
-async function getViewDefinition(viewId: string) {
-  if (!viewId) return Promise.reject(new Error("Invalid view id"));
+async function getViewDefinition(entityName: string, viewId?: string | null): Promise<IViewDefinition> {
+  let view;
+  if (viewId) {
+    const result = await axios.get<{ value: IViewDefinition[] }>(`/api/data/v${apiVersion}/savedqueries`, {
+      params: {
+        $filter: `savedqueryid eq '${viewId}'`,
+        $select: viewDefinitionColumns.join(","),
+      },
+    });
+    view = result.data.value?.at(0);
+    if (view) {
+      const layoutjson = view.layoutjson as unknown as string;
+      const layout = JSON.parse(layoutjson) as IViewLayout;
+      view.layoutjson = layout;
+    }
+  }
+
+  if (!view) {
+    view = await getLookupViewDefinition(entityName);
+  }
+
+  if (!view) return Promise.reject(new Error("View not found"));
+
+  return view;
+}
+
+export async function getLookupViewDefinition(entityName: string) {
+  if (!entityName) return Promise.reject(new Error("Invalid entity name"));
 
   const result = await axios.get<{ value: IViewDefinition[] }>(`/api/data/v${apiVersion}/savedqueries`, {
     params: {
-      $filter: `savedqueryid eq '${viewId}'`,
+      $filter: `returnedtypecode eq '${entityName}' and querytype eq 64`,
       $select: viewDefinitionColumns.join(","),
     },
   });

@@ -39,18 +39,21 @@ export class Lookdown implements ComponentFramework.ReactControl<IInputs, IOutpu
   public updateView(context: ComponentFramework.Context<IInputs>): React.ReactElement {
     this.context = context;
 
+    const isAuthoringMode = typeof context.parameters.lookupField?.getViewId === "function" ? false : true;
+
     return React.createElement(LookdownControl, {
-      lookupViewId: context.parameters.lookupField.getViewId(),
-      lookupEntity: context.parameters.lookupField.getTargetEntityType(),
-      selectedId: context.parameters.lookupField.raw.at(0)?.id,
-      customFilter: context.parameters.customFilter.raw,
-      groupBy: context.parameters.groupByField.raw,
-      showIcon: context.parameters.showIcon.raw
+      lookupViewId: isAuthoringMode ? undefined : context.parameters.lookupField.getViewId(),
+      lookupEntity: isAuthoringMode ? undefined : context.parameters.lookupField.getTargetEntityType(),
+      selectedId: context.parameters.lookupField.raw?.at(0)?.id,
+      customFilter: context.parameters.customFilter?.raw,
+      groupBy: context.parameters.groupByField?.raw,
+      showIcon: context.parameters.showIcon?.raw
         ? (Number.parseInt(context.parameters.showIcon.raw) as ShowIconOptions)
         : undefined,
-      iconSize: context.parameters.iconSize.raw
+      iconSize: context.parameters.iconSize?.raw
         ? (Number.parseInt(context.parameters.iconSize.raw) as IconSizes)
         : undefined,
+      disabled: context.mode.isControlDisabled,
       onChange: (value) => {
         this.output = value;
         this.notifyOutputChanged();

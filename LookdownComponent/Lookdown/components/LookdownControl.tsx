@@ -28,13 +28,14 @@ export enum IconSizes {
 }
 
 export interface LookdownProps {
-  lookupViewId: string;
-  lookupEntity: string;
+  lookupViewId?: string | null;
+  lookupEntity?: string | null;
   selectedId?: string | null;
   customFilter?: string | null;
   groupBy?: string | null;
   showIcon?: ShowIconOptions;
   iconSize?: IconSizes;
+  disabled?: boolean;
   onChange?: (selectedItem: ComponentFramework.LookupValue | null) => void;
 }
 
@@ -79,6 +80,7 @@ const Body = ({
   groupBy,
   showIcon,
   iconSize,
+  disabled,
   onChange,
 }: LookdownProps) => {
   const {
@@ -229,6 +231,7 @@ const Body = ({
       selectedKey={selectedId ?? undefined}
       placeholder="---"
       options={getDropdownOptions()}
+      disabled={disabled}
       onChange={(event, option) => {
         if (!onChange) return;
         if (!metadata) return;
