@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DCEPCF" constructor="Lookdown" version="0.0.3" display-name-key="Lookdown" description-key="Display a lookup control as a dropdown" control-type="virtual" >
+  <control namespace="DCEPCF" constructor="Lookdown" version="1.0.0" display-name-key="Lookdown v1.0.0" description-key="Display a lookup control as a dropdown" control-type="virtual" >
     <external-service-usage enabled="false">
       <!--UNCOMMENT TO ADD EXTERNAL DOMAINS
       <domain></domain>
@@ -9,6 +9,7 @@
     </external-service-usage>
     <!-- property node identifies a specific, configurable piece of data that the control expects from CDS -->
     <property name="lookupField" display-name-key="Lookup Field" description-key="The lookup field that the component is bound to" of-type="Lookup.Simple" usage="bound" required="true" />
+    <property name="customFilter" display-name-key="Custom Filter" description-key="Additional filter to be added to the Lookup view. Custom filter should be serialized as a FetchXML <filter> node." of-type-group="text" usage="input" required="false" />
     <property name="groupByField" display-name-key="Group By Field" description-key="Group the options dropdown by this field" of-type="SingleLine.Text" usage="input" required="false" />
     <property name="showIcon" display-name-key="Show Icon" description-key="Whether to show an icon in option item. Default: None" of-type="Enum" usage="input" required="false" >
       <value name="none" display-name-key="None">0</value>
@@ -19,6 +20,11 @@
       <value name="normal" display-name-key="Normal">0</value>
       <value name="large" display-name-key="Large">1</value>      
     </property>
+    <type-group name="text">
+      <type>SingleLine.Text</type>
+      <type>SingleLine.TextArea</type>
+      <type>Multiple</type>
+    </type-group>
     <resources>
       <code path="index.ts" order="1"/>
       <platform-library name="React" version="16.8.6" />

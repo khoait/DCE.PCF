@@ -22,9 +22,7 @@ import {
 } from "../services/DataverseService";
 import { SuggestionInfo } from "./SuggestionInfo";
 import { IMetadata } from "../types/metadata";
-
-// TODO: fix this import in handlebars next version
-import Handlebars from "handlebars/lib/handlebars";
+import Handlebars from "handlebars";
 
 const queryClient = new QueryClient();
 const parser = new DOMParser();

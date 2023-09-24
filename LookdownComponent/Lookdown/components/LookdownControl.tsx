@@ -11,7 +11,7 @@ import {
   ImageFit,
   ILabelStyles,
 } from "@fluentui/react";
-import { useFetchXmlData, useMetadata } from "../services/DataverseService";
+import { getCurrentRecord, useFetchXmlData, useMetadata } from "../services/DataverseService";
 import Handlebars from "handlebars";
 
 const queryClient = new QueryClient();
@@ -31,6 +31,7 @@ export interface LookdownProps {
   lookupViewId: string;
   lookupEntity: string;
   selectedId?: string | null;
+  customFilter?: string | null;
   groupBy?: string | null;
   showIcon?: ShowIconOptions;
   iconSize?: IconSizes;
@@ -70,18 +71,29 @@ const selectionOptionLabelStyles: ILabelStyles = {
   },
 };
 
-const Body = ({ lookupViewId, lookupEntity, selectedId, groupBy, showIcon, iconSize, onChange }: LookdownProps) => {
+const Body = ({
+  lookupViewId,
+  lookupEntity,
+  selectedId,
+  customFilter,
+  groupBy,
+  showIcon,
+  iconSize,
+  onChange,
+}: LookdownProps) => {
   const {
     data: metadata,
     isLoading: isLoadingMetadata,
     isSuccess: isLoadingMetadataSuccess,
   } = useMetadata(lookupEntity, lookupViewId, showIcon === ShowIconOptions.EntityIcon);
 
+  const fetchXml = getFetchTemplateString(metadata?.lookupView.fetchxml ?? "", customFilter);
+
   const {
     data: fetchData,
     isLoading: isLoadingFetchData,
     isSuccess: isLoadingFetchDataSuccess,
-  } = useFetchXmlData(metadata?.lookupEntity.EntitySetName, lookupViewId, metadata?.lookupView.fetchxml, groupBy);
+  } = useFetchXmlData(metadata?.lookupEntity.EntitySetName, lookupViewId, fetchXml, customFilter, groupBy);
 
   const getDropdownOptions = (): IDropdownOption<ComponentFramework.WebApi.Entity>[] => {
     if (!metadata) return [];
@@ -130,13 +142,22 @@ const Body = ({ lookupViewId, lookupEntity, selectedId, groupBy, showIcon, iconS
       });
     }
 
+    if (options.length === 0) {
+      options.push({
+        key: "no-records",
+        text: "No records found",
+        disabled: true,
+      });
+    }
+
     return options;
   };
 
   const entityIcon =
     metadata?.lookupEntity.IconVectorName ??
-    metadata?.lookupEntity.IconSmallName ??
-    metadata?.lookupEntity.IconMediumName;
+    (iconSize === IconSizes.Large
+      ? metadata?.lookupEntity.IconMediumName ?? metadata?.lookupEntity.IconSmallName
+      : metadata?.lookupEntity.IconSmallName);
 
   const recordImageTemplate =
     showIcon === ShowIconOptions.RecordImage
@@ -282,4 +303,23 @@ export default function LookdownControl(props: LookdownProps) {
       <Body {...props} />
     </QueryClientProvider>
   );
+}
+
+function getFetchTemplateString(fetchXml: string, customFilter: string | null | undefined) {
+  if (fetchXml === "") return fetchXml;
+
+  let templateString = fetchXml;
+
+  if (customFilter) {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(fetchXml ?? "", "application/xml");
+    const entity = doc.querySelector("entity");
+    // create customFilterElement from customFilter
+    const customFilterElement = parser.parseFromString(customFilter, "text/xml");
+    entity?.appendChild(customFilterElement.documentElement);
+    templateString = new XMLSerializer().serializeToString(doc);
+  }
+
+  const fetchXmlTemplate = Handlebars.compile(templateString);
+  return fetchXmlTemplate(getCurrentRecord());
 }

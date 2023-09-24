@@ -8,7 +8,7 @@
       <LocalizedName description="DCE PCF Components" languagecode="1033" />
     </LocalizedNames>
     <Descriptions />
-    <Version>1.0.2.2</Version>
+    <Version>1.0.3.0</Version>
     <!-- Solution Package Type: Unmanaged(0)/Managed(1)/Both(2)-->
     <Managed>2</Managed>
     <Publisher>
@@ -20,7 +20,7 @@
       </LocalizedNames>
       <Descriptions>
         <!-- Description of Cds Publisher in language code -->
-        <Description description="DynamicsCrmExp PCF Components Library" languagecode="1033" />
+        <Description description="DynamicsCrmExp PCF Components Library.&#xA;- PolyLookup v1.1.3&#xA;- Lookdown v1.0.0&#xA;&#xA;For feedback and report issues, please visit: https://github.com/khoait/DCE.PCF/issues" languagecode="1033" />
       </Descriptions>
       <EMailAddress xsi:nil="true"></EMailAddress>
       <SupportingWebsiteUrl xsi:nil="true"></SupportingWebsiteUrl>

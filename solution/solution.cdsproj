@@ -44,6 +44,7 @@
   
   <ItemGroup>
     <ProjectReference Include="..\PolyLookupComponent\PolyLookupComponent.pcfproj" />
+    <ProjectReference Include="..\LookdownComponent\LookdownComponent.pcfproj" />
   </ItemGroup>
 
   <Import Project="$(MSBuildToolsPath)\Microsoft.Common.targets" />
