@@ -11,6 +11,7 @@ This Github repository contains a collection of React-based components that prov
 The components included in this repository are fully documented with examples and usage guidelines. You can find the documentation in the wiki page of the repository.
 
 1. **[PolyLookup](https://github.com/khoait/DCE.PCF/wiki/PolyLookup)**: Multi-select lookup supporting different type of many-to-many relationships.
+2. **[Lookdown](https://github.com/khoait/DCE.PCF/wiki/Lookdown)**: Lookup field as a dropdown with advanced features.
 
 ## ⚙️ Installation
 
@@ -20,7 +21,7 @@ Once you've installed the solution, you can select the components in the form de
 
 ## 🤝 Contribution
 
-Thanks for showing your interest in the repo. All contributions are most welcomed!
+Thanks for showing your interest in the repo. All contributions are most welcome!
 
 ### Ways to contribute
 
