@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
 import { IEntityDefinition, IMetadata, IViewDefinition, IViewLayout } from "../types/metadata";
+import Handlebars from "handlebars";
 
 const tableDefinitionColumns = [
   "LogicalName",
@@ -32,10 +33,11 @@ export function useFetchXmlData(
   entitySetName: string | undefined,
   lookupViewId: string | undefined,
   fetchXml: string | undefined,
+  customFilter?: string | null,
   groupBy?: string | null
 ) {
   return useQuery({
-    queryKey: [`${entitySetName}_${lookupViewId}_fetchdata`, { entitySetName, lookupViewId }],
+    queryKey: [`${entitySetName}_${lookupViewId}_fetchdata`, { entitySetName, lookupViewId, fetchXml }],
     queryFn: () => {
       return retrieveMultipleFetch(entitySetName ?? "", fetchXml ?? "", groupBy);
     },
@@ -136,4 +138,25 @@ async function retrieveMultipleFetch(entitySetName: string, fetchXml: string, gr
     .then((res) => {
       return res.data.value;
     });
+}
+
+export function getCurrentRecord(): ComponentFramework.WebApi.Entity {
+  return Object.fromEntries(
+    /* global Xrm */
+    Xrm.Page.data.entity.attributes.get().map((attribute) => {
+      const attributeType = attribute.getAttributeType();
+      if (attributeType === "lookup") {
+        const lookupVal = (attribute as Xrm.Attributes.LookupAttribute).getValue()?.at(0);
+        if (lookupVal) {
+          lookupVal.id = lookupVal.id.replace("{", "").replace("}", "");
+        }
+
+        return [attribute.getName(), lookupVal];
+      } else if (attributeType === "datetime") {
+        return [attribute.getName(), (attribute as Xrm.Attributes.DateAttribute).getValue()?.toISOString()];
+      }
+
+      return [attribute.getName(), attribute.getValue()];
+    })
+  );
 }
