@@ -45,13 +45,13 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
     const props: PolyLookupProps = {
       currentTable: context.page.entityTypeName,
       currentRecordId: context.page.entityId,
-      relationshipName: context.parameters.relationship.raw ?? "",
-      relationship2Name: context.parameters.relationship2.raw ?? undefined,
+      relationshipName: context.parameters.relationship?.raw ?? "",
+      relationship2Name: context.parameters.relationship2?.raw ?? undefined,
       relationshipType: Number.parseInt(context.parameters.relationshipType.raw) as RelationshipTypeEnum,
       clientUrl: clientUrl,
-      lookupView: context.parameters.lookupView.raw ?? undefined,
-      itemLimit: context.parameters.itemLimit.raw ?? undefined,
-      pageSize: context.userSettings.pagingLimit ?? undefined,
+      lookupView: context.parameters.lookupView?.raw ?? undefined,
+      itemLimit: context.parameters.itemLimit?.raw ?? undefined,
+      pageSize: context.userSettings?.pagingLimit ?? undefined,
       disabled: context.mode.isControlDisabled,
       formType: typeof Xrm === "undefined" ? undefined : Xrm.Page.ui.getFormType(),
       outputSelectedItems: !!context.parameters.outputField.attributes?.LogicalName,
@@ -59,7 +59,7 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
         context.parameters.outputSelected.raw === "1" || context.parameters.outputField.attributes?.LogicalName
           ? this.onLookupChange
           : undefined,
-      onQuickCreate: context.parameters.allowQuickCreate.raw === "1" ? this.onQuickCreate : undefined,
+      onQuickCreate: context.parameters.allowQuickCreate?.raw === "1" ? this.onQuickCreate : undefined,
     };
     return React.createElement(PolyLookupControl, props);
   }

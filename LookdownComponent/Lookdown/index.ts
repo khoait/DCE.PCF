@@ -44,7 +44,7 @@ export class Lookdown implements ComponentFramework.ReactControl<IInputs, IOutpu
     return React.createElement(LookdownControl, {
       lookupViewId: isAuthoringMode ? undefined : context.parameters.lookupField.getViewId(),
       lookupEntity: isAuthoringMode ? undefined : context.parameters.lookupField.getTargetEntityType(),
-      selectedId: context.parameters.lookupField.raw?.at(0)?.id,
+      selectedId: context.parameters.lookupField?.raw?.at(0)?.id,
       customFilter: context.parameters.customFilter?.raw,
       groupBy: context.parameters.groupByField?.raw,
       showIcon: context.parameters.showIcon?.raw
