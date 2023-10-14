@@ -100,7 +100,7 @@ export function useSelectedItems(
     enabled:
       !!metadata?.intersectEntity.EntitySetName &&
       !!metadata?.associatedEntity.EntitySetName &&
-      formType === XrmEnum.FormType.Update,
+      (formType === XrmEnum.FormType.Update || formType === XrmEnum.FormType.ReadOnly),
   });
 }
 
