@@ -38,7 +38,7 @@ export interface PolyLookupProps {
   currentTable: string;
   currentRecordId: string;
   relationshipName: string;
-  relationship2Name: string | undefined;
+  relationship2Name?: string;
   relationshipType: RelationshipTypeEnum;
   clientUrl: string;
   lookupView?: string;
@@ -127,7 +127,9 @@ const Body = ({
   } = useMetadata(
     currentTable,
     relationshipName,
-    relationshipType === RelationshipTypeEnum.Custom ? relationship2Name ?? undefined : undefined,
+    relationshipType === RelationshipTypeEnum.Custom || relationshipType === RelationshipTypeEnum.Connection
+      ? relationship2Name
+      : undefined,
     lookupView
   );
 
@@ -229,10 +231,13 @@ const Body = ({
           relationshipName,
           clientUrl
         );
-      } else if (relationshipType === RelationshipTypeEnum.Custom) {
+      } else if (
+        relationshipType === RelationshipTypeEnum.Custom ||
+        relationshipType === RelationshipTypeEnum.Connection
+      ) {
         return createRecord(metadata?.intersectEntity.EntitySetName, {
-          [`${metadata?.currentIntesectAttribute}@odata.bind`]: `/${metadata?.currentEntity.EntitySetName}(${currentRecordId})`,
-          [`${metadata?.associatedIntesectAttribute}@odata.bind`]: `/${metadata?.associatedEntity.EntitySetName}(${id})`,
+          [`${metadata?.currentEntityNavigationPropertyName}@odata.bind`]: `/${metadata?.currentEntity.EntitySetName}(${currentRecordId})`,
+          [`${metadata?.associatedEntityNavigationPropertyName}@odata.bind`]: `/${metadata?.associatedEntity.EntitySetName}(${id})`,
         });
       }
       return Promise.reject("Relationship type not supported");
@@ -247,7 +252,10 @@ const Body = ({
     mutationFn: (id: string) => {
       if (relationshipType === RelationshipTypeEnum.ManyToMany) {
         return disassociateRecord(metadata?.currentEntity?.EntitySetName, currentRecordId, relationshipName, id);
-      } else if (relationshipType === RelationshipTypeEnum.Custom) {
+      } else if (
+        relationshipType === RelationshipTypeEnum.Custom ||
+        relationshipType === RelationshipTypeEnum.Connection
+      ) {
         return deleteRecord(metadata?.intersectEntity.EntitySetName, id);
       }
       return Promise.reject("Relationship type not supported");

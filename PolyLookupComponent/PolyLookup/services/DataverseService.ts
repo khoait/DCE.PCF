@@ -24,6 +24,7 @@ const oneToNColumns = [
   "SchemaName",
   "ReferencedEntity",
   "ReferencingEntity",
+  "ReferencingEntityNavigationPropertyName",
   "ReferencedAttribute",
   "ReferencingAttribute",
   "RelationshipType",
@@ -247,6 +248,8 @@ export async function getMetadata(
 
     let currentIntesectAttribute: string;
     let associatedIntesectAttribute: string;
+    let currentEntityNavigationPropertyName: string | undefined;
+    let associatedEntityNavigationPropertyName: string | undefined;
     if (isManyToMany(relationship1)) {
       currentIntesectAttribute =
         relationship1.Entity1LogicalName === currentTable
@@ -260,6 +263,8 @@ export async function getMetadata(
     } else {
       currentIntesectAttribute = relationship1.ReferencingAttribute;
       associatedIntesectAttribute = relationship2?.ReferencingAttribute ?? "";
+      currentEntityNavigationPropertyName = relationship1.ReferencingEntityNavigationPropertyName;
+      associatedEntityNavigationPropertyName = relationship2?.ReferencingEntityNavigationPropertyName;
     }
 
     return {
@@ -271,6 +276,8 @@ export async function getMetadata(
       associatedView,
       currentIntesectAttribute,
       associatedIntesectAttribute,
+      currentEntityNavigationPropertyName,
+      associatedEntityNavigationPropertyName,
     };
   } catch (error) {
     console.log(error);

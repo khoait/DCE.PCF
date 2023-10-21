@@ -47,16 +47,16 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
       currentRecordId: context.page.entityId,
       relationshipName: context.parameters.relationship?.raw ?? "",
       relationship2Name: context.parameters.relationship2?.raw ?? undefined,
-      relationshipType: Number.parseInt(context.parameters.relationshipType.raw) as RelationshipTypeEnum,
+      relationshipType: Number.parseInt(context.parameters.relationshipType?.raw) as RelationshipTypeEnum,
       clientUrl: clientUrl,
       lookupView: context.parameters.lookupView?.raw ?? undefined,
       itemLimit: context.parameters.itemLimit?.raw ?? undefined,
       pageSize: context.userSettings?.pagingLimit ?? undefined,
       disabled: context.mode.isControlDisabled,
       formType: typeof Xrm === "undefined" ? undefined : Xrm.Page.ui.getFormType(),
-      outputSelectedItems: !!context.parameters.outputField.attributes?.LogicalName,
+      outputSelectedItems: !!context.parameters.outputField?.attributes?.LogicalName,
       onChange:
-        context.parameters.outputSelected.raw === "1" || context.parameters.outputField.attributes?.LogicalName
+        context.parameters.outputSelected?.raw === "1" || context.parameters.outputField?.attributes?.LogicalName
           ? this.onLookupChange
           : undefined,
       onQuickCreate: context.parameters.allowQuickCreate?.raw === "1" ? this.onQuickCreate : undefined,
@@ -85,7 +85,7 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
 
   public onLookupChange = (selectedItems: ComponentFramework.EntityReference[] | undefined) => {
     if (this.context.parameters.outputSelected.raw === "1") {
-      this.output = selectedItems?.map((item) => item.name).join(",");
+      this.output = selectedItems?.map((item) => item.name).join(", ");
     }
 
     if (this.context.parameters.outputField.attributes) {
