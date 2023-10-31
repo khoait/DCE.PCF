@@ -24,8 +24,8 @@
       <value name="custom" display-name-key="Custom N:1-1:N">1</value>
       <value name="connection" display-name-key="Connection">2</value>
     </property>
-    <property name="relationship" display-name-key="Relationship Name" description-key="- N-N: The relationship schema name to the associated table&#xA;- Custom N-N: The relationship schema name from the current table to the intermediate table&#xA;- Connection: Connected From relationship name" of-type="SingleLine.Text" usage="input" required="true" />
-    <property name="relationship2" display-name-key="Relationship 2 Name" description-key="- N-N: Not applicable&#xA;- Custom N-N: The relationship schema name from the intermediate table to the associated table&#xA;- Connection: Connected To relationship name" of-type="SingleLine.Text" usage="input" required="false" />    
+    <property name="relationship" display-name-key="Relationship Name" description-key="- N-N: The relationship name to the associated table&#xA;- Custom N-N: The relationship name from the current table to the intermediate table&#xA;- Connection: Connected From relationship name" of-type="SingleLine.Text" usage="input" required="true" />
+    <property name="relationship2" display-name-key="Relationship 2 Name" description-key="- N-N: Not applicable&#xA;- Custom N-N: The relationship name from the intermediate table to the associated table&#xA;- Connection: Connected To relationship name" of-type="SingleLine.Text" usage="input" required="false" />    
     <property name="outputSelected" display-name-key="Should Output Selected Text" description-key="Whether output selected records as text to the Bound Field" of-type="Enum" usage="input" required="true" default-value="0" >
       <value name="false" display-name-key="No">0</value>
       <value name="true" display-name-key="Yes">1</value>

@@ -166,6 +166,18 @@ async function retrieveMultipleFetch(entitySetName: string, fetchXml: string, gr
       },
     })
     .then((res) => {
+      // overwrite with formatted values
+      res.data.value.forEach((record) => {
+        Object.keys(record).forEach((key) => {
+          if (!key.endsWith("@OData.Community.Display.V1.FormattedValue")) {
+            const formattedValue = record[key + "@OData.Community.Display.V1.FormattedValue"];
+            if (formattedValue && formattedValue !== "") {
+              record[key] = formattedValue;
+            }
+          }
+        });
+      });
+
       return res.data.value;
     });
 }
@@ -189,4 +201,16 @@ export function getCurrentRecord(): ComponentFramework.WebApi.Entity {
       return [attribute.getName(), attribute.getValue()];
     })
   );
+}
+
+export function getAttributeFormattedValue(entity: ComponentFramework.WebApi.Entity, attributeName: string): string {
+  if (!entity) return "";
+
+  let formattedValue = entity[attributeName + "@OData.Community.Display.V1.FormattedValue"];
+
+  if (!formattedValue) {
+    formattedValue = entity[attributeName];
+  }
+
+  return formattedValue;
 }
