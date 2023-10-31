@@ -47,6 +47,8 @@ export class Lookdown implements ComponentFramework.ReactControl<IInputs, IOutpu
       selectedId: context.parameters.lookupField?.raw?.at(0)?.id,
       customFilter: context.parameters.customFilter?.raw,
       groupBy: context.parameters.groupByField?.raw,
+      optionTemplate: context.parameters.optionTemplate?.raw,
+      selectedItemTemplate: context.parameters.selectedItemTemplate?.raw,
       showIcon: context.parameters.showIcon?.raw
         ? (Number.parseInt(context.parameters.showIcon.raw) as ShowIconOptions)
         : undefined,

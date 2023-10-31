@@ -11,7 +11,12 @@ import {
   ImageFit,
   ILabelStyles,
 } from "@fluentui/react";
-import { getCurrentRecord, useFetchXmlData, useMetadata } from "../services/DataverseService";
+import {
+  getAttributeFormattedValue,
+  getCurrentRecord,
+  useFetchXmlData,
+  useMetadata,
+} from "../services/DataverseService";
 import Handlebars from "handlebars";
 
 const queryClient = new QueryClient();
@@ -33,6 +38,8 @@ export interface LookdownProps {
   selectedId?: string | null;
   customFilter?: string | null;
   groupBy?: string | null;
+  optionTemplate?: string | null; // example of optionTemplate: {{ fullname }} - {{ emailaddress1 }}
+  selectedItemTemplate?: string | null; // example of selectedItemTemplate: {{ fullname }} - {{ emailaddress1 }}
   showIcon?: ShowIconOptions;
   iconSize?: IconSizes;
   disabled?: boolean;
@@ -78,6 +85,8 @@ const Body = ({
   selectedId,
   customFilter,
   groupBy,
+  optionTemplate,
+  selectedItemTemplate,
   showIcon,
   iconSize,
   disabled,
@@ -89,7 +98,12 @@ const Body = ({
     isSuccess: isLoadingMetadataSuccess,
   } = useMetadata(lookupEntity, lookupViewId, showIcon === ShowIconOptions.EntityIcon);
 
-  const fetchXml = getFetchTemplateString(metadata?.lookupView.fetchxml ?? "", customFilter);
+  const templateColumns: string[] = [];
+  if (optionTemplate || selectedItemTemplate) {
+    templateColumns.push(...getHandlebarsVariables(optionTemplate ?? "" + " " + selectedItemTemplate ?? ""));
+  }
+
+  const fetchXml = getFetchTemplateString(metadata?.lookupView.fetchxml ?? "", customFilter, templateColumns);
 
   const {
     data: fetchData,
@@ -103,17 +117,17 @@ const Body = ({
 
     let options: IDropdownOption<ComponentFramework.WebApi.Entity>[] = [];
 
+    let optionTemplateCompiled: HandlebarsTemplateDelegate | null = null;
+
+    if (optionTemplate) {
+      optionTemplateCompiled = Handlebars.compile(optionTemplate);
+    }
+
     // group results by groupBy field
     if (groupBy) {
       const grouped: Record<string, ComponentFramework.WebApi.Entity[]> = {};
       fetchData.forEach((item) => {
-        let key = item[groupBy]?.toString() ?? "(Blank)";
-
-        // use formatted value if available
-        const formattedValue = item[groupBy + "@OData.Community.Display.V1.FormattedValue"];
-        if (formattedValue && formattedValue !== "") {
-          key = formattedValue;
-        }
+        const key = item[groupBy]?.toString() ?? "(Blank)";
 
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(item);
@@ -129,7 +143,9 @@ const Body = ({
         grouped[key].forEach((item) => {
           options.push({
             key: item[metadata.lookupEntity.PrimaryIdAttribute],
-            text: item[metadata.lookupEntity.PrimaryNameAttribute],
+            text: optionTemplateCompiled
+              ? optionTemplateCompiled(item)
+              : item[metadata.lookupEntity.PrimaryNameAttribute],
             data: item,
           });
         });
@@ -138,7 +154,9 @@ const Body = ({
       options = fetchData.map((item) => {
         return {
           key: item[metadata.lookupEntity.PrimaryIdAttribute],
-          text: item[metadata.lookupEntity.PrimaryNameAttribute],
+          text: optionTemplateCompiled
+            ? optionTemplateCompiled(item)
+            : item[metadata.lookupEntity.PrimaryNameAttribute],
           data: item,
         };
       });
@@ -218,10 +236,18 @@ const Body = ({
       }
     }
 
+    let selectedItemTemplateCompiled: HandlebarsTemplateDelegate | null = null;
+
+    if (selectedItemTemplate) {
+      selectedItemTemplateCompiled = Handlebars.compile(selectedItemTemplate);
+    }
+
     return (
       <Stack horizontal verticalAlign="center" tokens={{ childrenGap: 8 }}>
         {imgSrc ? <Image imageFit={ImageFit.cover} src={imgSrc} width={imgSize} height={imgSize}></Image> : null}
-        <Label styles={selectionOptionLabelStyles}>{option.text}</Label>
+        <Label styles={selectionOptionLabelStyles}>
+          {selectedItemTemplateCompiled ? selectedItemTemplateCompiled(option.data) : option.text}
+        </Label>
       </Stack>
     );
   };
@@ -308,21 +334,62 @@ export default function LookdownControl(props: LookdownProps) {
   );
 }
 
-function getFetchTemplateString(fetchXml: string, customFilter: string | null | undefined) {
+function getFetchTemplateString(fetchXml: string, customFilter?: string | null, additionalColumns?: string[]) {
+  debugger;
   if (fetchXml === "") return fetchXml;
+
+  if (!customFilter && additionalColumns?.length === 0) return fetchXml;
 
   let templateString = fetchXml;
 
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(fetchXml, "application/xml");
+  const entity = doc.querySelector("entity");
+
   if (customFilter) {
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(fetchXml ?? "", "application/xml");
-    const entity = doc.querySelector("entity");
     // create customFilterElement from customFilter
-    const customFilterElement = parser.parseFromString(customFilter, "text/xml");
-    entity?.appendChild(customFilterElement.documentElement);
-    templateString = new XMLSerializer().serializeToString(doc);
+    const customFilterEl = parser.parseFromString(customFilter, "text/xml");
+    entity?.appendChild(customFilterEl.documentElement);
   }
+
+  if (additionalColumns?.length) {
+    // get unique list of additionalColumns
+    additionalColumns = [...new Set(additionalColumns)];
+
+    // get all attribute names from fetchXml
+    const attributes = doc.querySelectorAll("attribute");
+    const attributeNames = Array.from(attributes).map((a) => a.getAttribute("name"));
+
+    // get list of strings from additionalColumns not in attributeNames
+    const addColumns = additionalColumns.filter((c) => !attributeNames.includes(c));
+
+    addColumns.forEach((c) => {
+      const attributeEl = parser.parseFromString(`<attribute name='${c}' />`, "text/xml");
+      entity?.appendChild(attributeEl.documentElement);
+    });
+  }
+
+  templateString = new XMLSerializer().serializeToString(doc);
 
   const fetchXmlTemplate = Handlebars.compile(templateString);
   return fetchXmlTemplate(getCurrentRecord());
 }
+
+/**
+ * Getting the variables from the Handlebars template.
+ * Supports helpers too.
+ * @param input
+ */
+const getHandlebarsVariables = (input: string): string[] => {
+  const ast = Handlebars.parseWithoutProcessing(input);
+
+  return ast.body
+    .filter(({ type }: hbs.AST.Statement) => type === "MustacheStatement")
+    .map((statement: hbs.AST.Statement) => {
+      const moustacheStatement: hbs.AST.MustacheStatement = statement as hbs.AST.MustacheStatement;
+      const paramsExpressionList = moustacheStatement.params as hbs.AST.PathExpression[];
+      const pathExpression = moustacheStatement.path as hbs.AST.PathExpression;
+
+      return paramsExpressionList[0]?.original || pathExpression.original;
+    });
+};
