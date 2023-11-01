@@ -182,7 +182,9 @@ async function retrieveMultipleFetch(entitySetName: string, fetchXml: string, gr
     });
 }
 
-export function getCurrentRecord(): ComponentFramework.WebApi.Entity {
+export function getCurrentRecord(): ComponentFramework.WebApi.Entity | null {
+  if (!Xrm.Page?.data?.entity) return null;
+
   return Object.fromEntries(
     /* global Xrm */
     Xrm.Page.data.entity.attributes.get().map((attribute) => {

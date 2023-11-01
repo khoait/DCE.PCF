@@ -1,4 +1,4 @@
-import LookdownControl, { IconSizes, ShowIconOptions } from "./components/LookdownControl";
+import LookdownControl, { IconSizes, OpenRecordMode, ShowIconOptions } from "./components/LookdownControl";
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import * as React from "react";
 
@@ -55,6 +55,11 @@ export class Lookdown implements ComponentFramework.ReactControl<IInputs, IOutpu
       iconSize: context.parameters.iconSize?.raw
         ? (Number.parseInt(context.parameters.iconSize.raw) as IconSizes)
         : undefined,
+      openRecordMode: context.parameters.commandOpenRecord?.raw
+        ? (Number.parseInt(context.parameters.commandOpenRecord.raw) as OpenRecordMode)
+        : undefined,
+      allowQuickCreate: context.parameters.commandQuickCreate?.raw === "1",
+      allowLookupPanel: context.parameters.commandQuickCreate?.raw === "1",
       disabled: context.mode.isControlDisabled,
       onChange: (value) => {
         this.output = value;

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DCEPCF" constructor="Lookdown" version="1.0.3" display-name-key="Lookdown v1.0.3" description-key="Display a lookup control as a dropdown" control-type="virtual" >
+  <control namespace="DCEPCF" constructor="Lookdown" version="1.0.4" display-name-key="Lookdown v1.0.4" description-key="Display a lookup control as a dropdown" control-type="virtual" >
     <external-service-usage enabled="false">
       <!--UNCOMMENT TO ADD EXTERNAL DOMAINS
       <domain></domain>
@@ -20,7 +20,20 @@
     </property>
     <property name="iconSize" display-name-key="Icon Size" description-key="Icon size applicable when showing icon. Default: Normal." of-type="Enum" usage="input" required="false" default-value="0" >
       <value name="normal" display-name-key="Normal">0</value>
-      <value name="large" display-name-key="Large">1</value>      
+      <value name="large" display-name-key="Large">1</value>
+    </property>
+    <property name="commandOpenRecord" display-name-key="Open Record Command" description-key="Show command button to open the lookup record. Default: No." of-type="Enum" usage="input" required="false" default-value="0" >
+      <value name="no" display-name-key="No">0</value>
+      <value name="inline" display-name-key="Inline">1</value>
+      <value name="dialog" display-name-key="Dialog">2</value>
+    </property>
+    <property name="commandQuickCreate" display-name-key="Quick Create Command" description-key="Show command to quick create new option. Default: No." of-type="Enum" usage="input" required="false" default-value="0" >
+      <value name="no" display-name-key="No">0</value>
+      <value name="yes" display-name-key="Yes">1</value>
+    </property>
+    <property name="commandLookup" display-name-key="Lookup Panel Command" description-key="Show command to open the Lookup Panel. Default: No." of-type="Enum" usage="input" required="false" default-value="0" >
+      <value name="no" display-name-key="No">0</value>
+      <value name="yes" display-name-key="Yes">1</value>
     </property>
     <type-group name="text">
       <type>SingleLine.Text</type>
