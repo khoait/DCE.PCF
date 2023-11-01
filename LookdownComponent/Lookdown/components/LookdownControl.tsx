@@ -10,13 +10,12 @@ import {
   Label,
   ImageFit,
   ILabelStyles,
+  IIconProps,
+  IContextualMenuProps,
+  IconButton,
+  IContextualMenuItemStyles,
 } from "@fluentui/react";
-import {
-  getAttributeFormattedValue,
-  getCurrentRecord,
-  useFetchXmlData,
-  useMetadata,
-} from "../services/DataverseService";
+import { getCurrentRecord, useFetchXmlData, useMetadata } from "../services/DataverseService";
 import Handlebars from "handlebars";
 
 const queryClient = new QueryClient();
@@ -32,6 +31,12 @@ export enum IconSizes {
   Large = 1,
 }
 
+export enum OpenRecordMode {
+  None = 0,
+  Inline = 1,
+  Dialog = 2,
+}
+
 export interface LookdownProps {
   lookupViewId?: string | null;
   lookupEntity?: string | null;
@@ -42,6 +47,9 @@ export interface LookdownProps {
   selectedItemTemplate?: string | null; // example of selectedItemTemplate: {{ fullname }} - {{ emailaddress1 }}
   showIcon?: ShowIconOptions;
   iconSize?: IconSizes;
+  openRecordMode?: OpenRecordMode;
+  allowQuickCreate?: boolean;
+  allowLookupPanel?: boolean;
   disabled?: boolean;
   onChange?: (selectedItem: ComponentFramework.LookupValue | null) => void;
 }
@@ -79,6 +87,20 @@ const selectionOptionLabelStyles: ILabelStyles = {
   },
 };
 
+const commandIcon: IIconProps = { iconName: "MoreVertical" };
+
+const hiddenCommandStyle: IContextualMenuItemStyles = {
+  root: {
+    display: "none",
+  },
+};
+
+const visibleCommandStyle: IContextualMenuItemStyles = {
+  root: {
+    display: "block",
+  },
+};
+
 const Body = ({
   lookupViewId,
   lookupEntity,
@@ -89,6 +111,9 @@ const Body = ({
   selectedItemTemplate,
   showIcon,
   iconSize,
+  openRecordMode,
+  allowQuickCreate,
+  allowLookupPanel,
   disabled,
   onChange,
 }: LookdownProps) => {
@@ -252,77 +277,185 @@ const Body = ({
     );
   };
 
+  const hasCommand = openRecordMode || allowQuickCreate || allowLookupPanel;
+
+  const onOpenRecordCommandClick = () => {
+    if (!openRecordMode) return;
+    if (!lookupEntity) return;
+    if (!selectedId) return;
+
+    Xrm.Navigation.navigateTo(
+      {
+        pageType: "entityrecord",
+        entityName: lookupEntity,
+        entityId: selectedId,
+      },
+      { target: openRecordMode === OpenRecordMode.Dialog ? 2 : 1 }
+    );
+  };
+
+  const onQuickCreateCommandClick = async () => {
+    if (!allowQuickCreate) return;
+    if (!metadata) return;
+
+    let createdRecord: ComponentFramework.LookupValue | null = null;
+    if (metadata.lookupEntity.IsQuickCreateEnabled) {
+      const result = await Xrm.Navigation.openForm({
+        entityName: metadata.lookupEntity.LogicalName,
+        useQuickCreateForm: true,
+      });
+      if (!result.savedEntityReference?.length) return;
+
+      createdRecord = result.savedEntityReference[0];
+    } else {
+      const result = await Xrm.Navigation.navigateTo(
+        { pageType: "entityrecord", entityName: metadata.lookupEntity.LogicalName },
+        { target: 2 }
+      );
+
+      if (!result?.savedEntityReference?.length) return;
+
+      createdRecord = result.savedEntityReference[0];
+    }
+
+    if (!createdRecord) return;
+
+    onChange?.(createdRecord);
+
+    queryClient.invalidateQueries({ queryKey: [`${metadata.lookupEntity.EntitySetName}_${lookupViewId}_fetchdata`] });
+  };
+
+  const onLookupPanelCommandClick = async () => {
+    if (!allowLookupPanel) return;
+    if (!metadata) return;
+    const result = await Xrm.Utility.lookupObjects({
+      entityTypes: [metadata.lookupEntity.LogicalName],
+      defaultEntityType: metadata.lookupEntity.LogicalName,
+      allowMultiSelect: false,
+      disableMru: true,
+      filters: customFilter?.length
+        ? [{ entityLogicalName: metadata.lookupEntity.LogicalName, filterXml: getCustomFilterString(customFilter) }]
+        : [],
+    });
+
+    if (!result) return;
+
+    const selectedItem = {
+      entityType: metadata.lookupEntity.LogicalName,
+      id: result[0].id,
+      name: result[0].name,
+    } as ComponentFramework.LookupValue;
+
+    onChange?.(selectedItem);
+  };
+
+  const menuProps: IContextualMenuProps = {
+    items: [
+      {
+        key: "open-record",
+        text: "Open record",
+        iconProps: { iconName: "OpenInNewWindow" },
+        itemProps: { styles: !openRecordMode ? hiddenCommandStyle : visibleCommandStyle },
+        disabled: !selectedId,
+        onClick: onOpenRecordCommandClick,
+      },
+      {
+        key: "quick-create",
+        text: "Quick create",
+        itemProps: { styles: !allowQuickCreate ? hiddenCommandStyle : visibleCommandStyle },
+        iconProps: { iconName: "Add" },
+        disabled: !allowQuickCreate,
+        onClick: onQuickCreateCommandClick,
+      },
+      {
+        key: "lookup-panel",
+        text: "Lookup panel",
+        itemProps: { styles: !allowLookupPanel ? hiddenCommandStyle : visibleCommandStyle },
+        iconProps: { iconName: "LookupEntities" },
+        disabled: !allowLookupPanel,
+        onClick: onLookupPanelCommandClick,
+      },
+    ],
+  };
+
   return (
-    <Dropdown
-      selectedKey={selectedId ?? undefined}
-      placeholder="---"
-      options={getDropdownOptions()}
-      disabled={disabled}
-      onChange={(event, option) => {
-        if (!onChange) return;
-        if (!metadata) return;
+    <Stack horizontal styles={{ root: { width: "100%" } }}>
+      <Stack.Item grow>
+        <Dropdown
+          selectedKey={selectedId ?? undefined}
+          placeholder="---"
+          options={getDropdownOptions()}
+          disabled={disabled}
+          onChange={(event, option) => {
+            if (!onChange) return;
+            if (!metadata) return;
 
-        if (!option) {
-          onChange(null);
-          return;
-        }
+            if (!option) {
+              onChange(null);
+              return;
+            }
 
-        const data = option.data as ComponentFramework.WebApi.Entity;
-        const selectedItem = {
-          entityType: metadata.lookupEntity.LogicalName,
-          id: data[metadata.lookupEntity.PrimaryIdAttribute],
-          name: data[metadata.lookupEntity.PrimaryNameAttribute],
-        } as ComponentFramework.LookupValue;
-        onChange(selectedItem);
-      }}
-      onRenderOption={showIcon ? onRenderOption : undefined}
-      onRenderTitle={showIcon ? onRenderSelectedOption : undefined}
-      styles={(styleProps) => {
-        return {
-          root: {
-            width: "100%",
-          },
-          title: {
-            borderColor: styleProps.isOpen ? "#666" : "transparent",
-            borderRadius: styleProps.isOpen ? 1 : 0,
-            fontWeight: styleProps.isOpen ? 400 : 600,
-            color: "#000",
-            "&:active": {
-              fontWeight: 400,
-            },
-            "&:hover": {
-              fontWeight: 400,
-            },
-          },
-          dropdown: {
-            "&:active": DEFAULT_BORDER_STYLES,
-            "&:focus": DEFAULT_BORDER_STYLES,
-            "&:focus:after": DEFAULT_BORDER_STYLES,
-            "&:hover .ms-Dropdown-caretDownWrapper": {
-              display: "block",
-            },
-            "&:focus .ms-Dropdown-caretDownWrapper": {
-              display: "block",
-            },
-            "&:active .ms-Dropdown-title": {
-              fontWeight: 400,
-            },
-            "&:focus .ms-Dropdown-title": {
-              fontWeight: 400,
-            },
-          },
-          caretDownWrapper: {
-            display: styleProps.isOpen ? "block" : "none",
-          },
-          callout: {
-            maxHeight: 500,
-            "& .ms-Callout-main": {
-              maxHeight: "500px !important",
-            },
-          },
-        };
-      }}
-    />
+            const data = option.data as ComponentFramework.WebApi.Entity;
+            const selectedItem = {
+              entityType: metadata.lookupEntity.LogicalName,
+              id: data[metadata.lookupEntity.PrimaryIdAttribute],
+              name: data[metadata.lookupEntity.PrimaryNameAttribute],
+            } as ComponentFramework.LookupValue;
+            onChange(selectedItem);
+          }}
+          onRenderOption={showIcon ? onRenderOption : undefined}
+          onRenderTitle={showIcon ? onRenderSelectedOption : undefined}
+          styles={(styleProps) => {
+            return {
+              root: {
+                width: "100%",
+              },
+              title: {
+                borderColor: styleProps.isOpen ? "#666" : "transparent",
+                borderRadius: styleProps.isOpen ? 1 : 0,
+                fontWeight: styleProps.isOpen ? 400 : 600,
+                color: "#000",
+                "&:active": {
+                  fontWeight: 400,
+                },
+                "&:hover": {
+                  fontWeight: 400,
+                },
+              },
+              dropdown: {
+                "&:active": DEFAULT_BORDER_STYLES,
+                "&:focus": DEFAULT_BORDER_STYLES,
+                "&:focus:after": DEFAULT_BORDER_STYLES,
+                "&:hover .ms-Dropdown-caretDownWrapper": {
+                  display: "block",
+                },
+                "&:focus .ms-Dropdown-caretDownWrapper": {
+                  display: "block",
+                },
+                "&:active .ms-Dropdown-title": {
+                  fontWeight: 400,
+                },
+                "&:focus .ms-Dropdown-title": {
+                  fontWeight: 400,
+                },
+              },
+              caretDownWrapper: {
+                display: styleProps.isOpen ? "block" : "none",
+              },
+              callout: {
+                maxHeight: 500,
+                "& .ms-Callout-main": {
+                  maxHeight: "500px !important",
+                },
+              },
+            };
+          }}
+        />
+      </Stack.Item>
+      <Stack.Item>
+        {hasCommand ? <IconButton iconProps={commandIcon} menuProps={menuProps} onRenderMenuIcon={() => null} /> : null}
+      </Stack.Item>
+    </Stack>
   );
 };
 
@@ -335,7 +468,6 @@ export default function LookdownControl(props: LookdownProps) {
 }
 
 function getFetchTemplateString(fetchXml: string, customFilter?: string | null, additionalColumns?: string[]) {
-  debugger;
   if (fetchXml === "") return fetchXml;
 
   if (!customFilter && additionalColumns?.length === 0) return fetchXml;
@@ -375,12 +507,25 @@ function getFetchTemplateString(fetchXml: string, customFilter?: string | null, 
   return fetchXmlTemplate(getCurrentRecord());
 }
 
+function getCustomFilterString(customFilter: string) {
+  if (customFilter === "") return customFilter;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(customFilter, "application/xml");
+  const filter = doc.querySelector("filter");
+
+  if (!filter) return customFilter;
+
+  const filterTemplate = Handlebars.compile(customFilter);
+  return filterTemplate(getCurrentRecord());
+}
+
 /**
  * Getting the variables from the Handlebars template.
  * Supports helpers too.
  * @param input
  */
-const getHandlebarsVariables = (input: string): string[] => {
+function getHandlebarsVariables(input: string): string[] {
   const ast = Handlebars.parseWithoutProcessing(input);
 
   return ast.body
@@ -392,4 +537,4 @@ const getHandlebarsVariables = (input: string): string[] => {
 
       return paramsExpressionList[0]?.original || pathExpression.original;
     });
-};
+}
