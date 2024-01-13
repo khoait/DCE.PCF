@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import {
   IEntityDefinition,
@@ -8,7 +9,6 @@ import {
   IViewDefinition,
   IViewLayout,
 } from "../types/metadata";
-import { useQuery } from "@tanstack/react-query";
 
 const nToNColumns = [
   "SchemaName",
@@ -51,41 +51,19 @@ export function useMetadata(
   lookupView: string | undefined
 ) {
   return useQuery({
-    queryKey: [
-      `${relationshipName}_${lookupView}_metadata`,
-      { currentTable, relationshipName, relationship2Name, lookupView },
-    ],
+    queryKey: ["metadata", currentTable, relationshipName, relationship2Name, lookupView],
     queryFn: () => getMetadata(currentTable, relationshipName, relationship2Name, lookupView),
     enabled: !!currentTable && !!relationshipName,
   });
 }
 
-export function useSuggestions(
-  relationshipName: string,
-  associatedTableSetName: string,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  fetchXmlTemplate: HandlebarsTemplateDelegate<any>,
-  pageSize: number | undefined
-) {
-  return useQuery({
-    queryKey: [`${relationshipName}_suggestionItems`, { associatedTableSetName, pageSize }],
-    queryFn: () => {
-      const currentRecord = getCurrentRecord();
-      const fetchXml = fetchXmlTemplate(currentRecord);
-      return retrieveMultipleFetch(associatedTableSetName, fetchXml, 1, pageSize);
-    },
-    enabled: !!relationshipName && !!associatedTableSetName,
-  });
-}
-
 export function useSelectedItems(
-  currentTable: string,
-  currentRecordId: string,
   metadata: IMetadata | undefined,
+  currentRecordId: string,
   formType: XrmEnum.FormType | undefined
 ) {
   return useQuery({
-    queryKey: [`${metadata?.relationship1.SchemaName}_selectedItems`, { currentTable, currentRecordId }],
+    queryKey: ["selectedItems", metadata, currentRecordId, formType],
     queryFn: () =>
       retrieveAssociatedRecords(
         currentRecordId,
@@ -485,10 +463,15 @@ export function deleteRecord(entitySetName: string | undefined, recordId: string
   });
 }
 
-export function getCurrentRecord(): ComponentFramework.WebApi.Entity {
+export function getCurrentRecord(attributes?: string[]): ComponentFramework.WebApi.Entity {
+  let entityAttributes = Xrm.Page.data.entity.attributes.get();
+
+  if (attributes?.length) {
+    entityAttributes = entityAttributes.filter((a) => attributes.includes(a.getName()));
+  }
+
   return Object.fromEntries(
-    /* global Xrm */
-    Xrm.Page.data.entity.attributes.get().map((attribute) => {
+    entityAttributes.map((attribute) => {
       const attributeType = attribute.getAttributeType();
       if (attributeType === "lookup") {
         const lookupVal = (attribute as Xrm.Attributes.LookupAttribute).getValue()?.at(0);

@@ -1,4 +1,3 @@
-import React, { useCallback } from "react";
 import {
   IBasePickerStyles,
   IBasePickerSuggestionsProps,
@@ -9,6 +8,8 @@ import {
   ValidationState,
 } from "@fluentui/react";
 import { QueryClient, QueryClientProvider, useMutation } from "@tanstack/react-query";
+import Handlebars from "handlebars";
+import React, { useCallback } from "react";
 import {
   associateRecord,
   createRecord,
@@ -18,11 +19,9 @@ import {
   retrieveMultipleFetch,
   useMetadata,
   useSelectedItems,
-  useSuggestions,
 } from "../services/DataverseService";
-import { SuggestionInfo } from "./SuggestionInfo";
 import { IMetadata } from "../types/metadata";
-import Handlebars from "handlebars";
+import { SuggestionInfo } from "./SuggestionInfo";
 
 const queryClient = new QueryClient();
 const parser = new DOMParser();
@@ -143,21 +142,13 @@ const Body = ({
 
   const fetchXmlTemplate = Handlebars.compile(associatedFetchXml ?? "");
 
-  // get top 50 suggestions from associated table
-  const { data: suggestions, isLoading: isLoadingSuggestions } = useSuggestions(
-    relationshipName,
-    associatedTableSetName,
-    fetchXmlTemplate,
-    pageSize
-  );
-
   // get selected items
   const {
     data: selectedItems,
     isInitialLoading: isLoadingSelectedItems,
     isSuccess: isLoadingSelectedItemsSuccess,
     refetch: selectedItemsRefetch,
-  } = useSelectedItems(currentTable, currentRecordId, metadata, formType);
+  } = useSelectedItems(metadata, currentRecordId, formType);
 
   if (isLoadingSelectedItemsSuccess && onChange) {
     onChange(
@@ -179,7 +170,6 @@ const Body = ({
       if (!lookupView && metadata?.associatedView.querytype === 64) {
         shouldDefaultSearch = true;
       } else {
-        const currentRecord = getCurrentRecord();
         if (
           !fetchXml.includes("{{PolyLookupSearch}}") &&
           !fetchXml.includes("{{ PolyLookupSearch}}") &&
@@ -188,6 +178,8 @@ const Body = ({
         ) {
           shouldDefaultSearch = true;
         }
+
+        const currentRecord = getCurrentRecord();
 
         fetchXml = fetchXmlTemplate({
           ...currentRecord,
@@ -286,9 +278,10 @@ const Body = ({
 
   const showAllSuggestions = useCallback(
     async (selectedTags?: ITag[]): Promise<ITag[]> => {
-      return getSuggestionTags(suggestions, metadata);
+      const results = await filterQuery.mutateAsync({ searchText: "", pageSizeParam: pageSize });
+      return getSuggestionTags(results, metadata);
     },
-    [suggestions, metadata?.associatedEntity.PrimaryIdAttribute]
+    [metadata?.associatedEntity.PrimaryIdAttribute]
   );
 
   const onPickerChange = useCallback(
@@ -419,7 +412,7 @@ const Body = ({
     return ValidationState.invalid;
   };
 
-  const isDataLoading = (isLoadingMetadata || isLoadingSuggestions || isLoadingSelectedItems) && !shouldDisable();
+  const isDataLoading = (isLoadingMetadata || isLoadingSelectedItems) && !shouldDisable();
 
   return (
     <TagPicker
@@ -499,7 +492,7 @@ function getSuggestionTags(
           key: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ?? "",
           name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""] ?? "",
           data: i,
-        } as ITagWithData)
+        }) as ITagWithData
     ) ?? []
   );
 }
