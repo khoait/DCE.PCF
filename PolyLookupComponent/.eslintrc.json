@@ -3,12 +3,7 @@
     "browser": true,
     "es2021": true
   },
-  "extends": [
-    "plugin:@typescript-eslint/recommended",
-    "plugin:prettier/recommended",
-    "plugin:react/recommended",
-    "prettier"
-  ],
+  "extends": ["plugin:@typescript-eslint/recommended", "plugin:react/recommended"],
   "globals": {
     "ComponentFramework": true
   },
@@ -17,11 +12,10 @@
     "ecmaVersion": 12,
     "sourceType": "module"
   },
-  "plugins": ["@microsoft/power-apps", "@typescript-eslint", "prettier"],
+  "plugins": ["@microsoft/power-apps", "@typescript-eslint"],
   "rules": {
     "no-unused-vars": "off",
-    "no-explicit-any": "off",
-    "prettier/prettier": "warn"
+    "no-explicit-any": "off"
   },
   "settings": {
     "react": {
