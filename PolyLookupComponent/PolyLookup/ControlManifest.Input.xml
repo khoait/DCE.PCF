@@ -61,7 +61,7 @@
       <!-- UNCOMMENT TO ADD MORE RESOURCES
       <css path="css/PolyLookup.css" order="1" />
       -->
-      <resx path="strings/PolyLookup.1031.resx" version="1.0.0" />
+      <resx path="strings/PolyLookup.1033.resx" version="1.0.0" />
     </resources>
     <!-- UNCOMMENT TO ENABLE THE SPECIFIED API
     <feature-usage>
