@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DCEPCF" constructor="Lookdown" version="1.1.0" display-name-key="Lookdown v1.1.0" description-key="Display a lookup control as a dropdown" control-type="virtual" >
+  <control namespace="DCEPCF" constructor="Lookdown" version="1.2.0" display-name-key="Lookdown v1.2.0" description-key="Display a lookup control as a dropdown" control-type="virtual" >
     <external-service-usage enabled="false">
       <!--UNCOMMENT TO ADD EXTERNAL DOMAINS
       <domain></domain>
@@ -9,7 +9,7 @@
     </external-service-usage>
     <!-- property node identifies a specific, configurable piece of data that the control expects from CDS -->
     <property name="lookupField" display-name-key="Lookup Field" description-key="The lookup field that the component is bound to." of-type="Lookup.Simple" usage="bound" required="true" />
-    <property name="customFilter" display-name-key="Custom Filter" description-key="Additional filter to be added to the Lookup view. Custom filter should be serialized as a FetchXML <filter> node." of-type-group="text" usage="input" required="false" />
+    <property name="customFilter" display-name-key="Custom Filter" description-key="Additional filter to be added to the Lookup view. Custom filter should be serialized as a FetchXML filter node." of-type-group="text" usage="input" required="false" />
     <property name="groupByField" display-name-key="Group By Field" description-key="Group the options dropdown by this field." of-type="SingleLine.Text" usage="input" required="false" />
     <property name="optionTemplate" display-name-key="Option Display Template" description-key="Dynamic template to display option text." of-type="SingleLine.Text" usage="input" required="false" />
     <property name="selectedItemTemplate" display-name-key="Selected Option Display Template" description-key="Dynamic template to display selected option text. Default to option text if not provided." of-type="SingleLine.Text" usage="input" required="false" />
@@ -35,6 +35,7 @@
       <value name="no" display-name-key="No">0</value>
       <value name="yes" display-name-key="Yes">1</value>
     </property>
+    <property name="languagePackPath" display-name-key="Language Pack Path" description-key="Path to a resx web resource, relative to the environment url (eg. /webresources/new_/resx/Lookdown.1033.resx), to be used as Language Pack. Default to English if not provided." of-type="SingleLine.Text" usage="input" required="false" />
     <type-group name="text">
       <type>SingleLine.Text</type>
       <type>SingleLine.TextArea</type>
@@ -46,8 +47,8 @@
       <platform-library name="Fluent" version="8.29.0" />
       <!-- UNCOMMENT TO ADD MORE RESOURCES
       <css path="css/Lookdown.css" order="1" />
-      <resx path="strings/Lookdown.1033.resx" version="1.0.0" />
       -->
+      <resx path="strings/Lookdown.1033.resx" version="1.0.0" />
     </resources>
     <!-- UNCOMMENT TO ENABLE THE SPECIFIED API
     <feature-usage>
