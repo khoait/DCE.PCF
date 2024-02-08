@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DCEPCF" constructor="PolyLookup" version="1.2.2" display-name-key="PolyLookup v1.2.2" description-key="Multi-select lookup supporting different type of many-to-many relationships" control-type="virtual" >
+  <control namespace="DCEPCF" constructor="PolyLookup" version="1.3.0" display-name-key="PolyLookup v1.3.0" description-key="Multi-select lookup supporting different type of many-to-many relationships" control-type="virtual" >
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
     Example1:
@@ -37,6 +37,7 @@
       <value name="false" display-name-key="No">0</value>
       <value name="true" display-name-key="Yes">1</value>
     </property>
+    <property name="languagePackPath" display-name-key="Language Pack Path" description-key="Path to a resx web resource, relative to the environment url (eg. /webresources/new_/resx/PolyLookup.1033.resx), to be used as Language Pack. Default to English if not provided." of-type="SingleLine.Text" usage="input" required="false" />
     <type-group name="text">
       <type>SingleLine.Text</type>
       <type>SingleLine.TextArea</type>
@@ -59,8 +60,8 @@
       <platform-library name="Fluent" version="8.29.0" />
       <!-- UNCOMMENT TO ADD MORE RESOURCES
       <css path="css/PolyLookup.css" order="1" />
-      <resx path="strings/PolyLookup.1033.resx" version="1.0.0" />
       -->
+      <resx path="strings/PolyLookup.1033.resx" version="1.0.0" />
     </resources>
     <!-- UNCOMMENT TO ENABLE THE SPECIFIED API
     <feature-usage>

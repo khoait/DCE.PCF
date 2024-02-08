@@ -1,7 +1,7 @@
-import axios from "axios";
 import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
+import { LanguagePack } from "../types/languagePack";
 import { IEntityDefinition, IMetadata, IViewDefinition, IViewLayout } from "../types/metadata";
-import Handlebars from "handlebars";
 
 const tableDefinitionColumns = [
   "LogicalName",
@@ -27,7 +27,7 @@ export function useMetadata(
   entityIcon = false
 ) {
   return useQuery({
-    queryKey: [`${lookupTable}_${lookupViewId}_metadata`, { lookupTable, lookupViewId }],
+    queryKey: ["metadata", lookupTable, lookupViewId],
     queryFn: () => getMetadata(lookupTable ?? "", lookupViewId ?? ""),
     enabled: !!lookupTable && !!lookupViewId,
   });
@@ -41,12 +41,49 @@ export function useFetchXmlData(
   groupBy?: string | null
 ) {
   return useQuery({
-    queryKey: [`${entitySetName}_${lookupViewId}_fetchdata`, { entitySetName, lookupViewId, fetchXml }],
+    queryKey: ["fetchdata", entitySetName, lookupViewId, fetchXml],
     queryFn: () => {
       return retrieveMultipleFetch(entitySetName ?? "", fetchXml ?? "", groupBy);
     },
     enabled: !!entitySetName && !!lookupViewId && !!fetchXml,
   });
+}
+
+export function useLanguagePack(webResourcePath: string | undefined, defaultLanguagePack: LanguagePack) {
+  return useQuery({
+    queryKey: ["languagePack", webResourcePath],
+    queryFn: () => getLanguagePack(webResourcePath, defaultLanguagePack),
+    enabled: !!webResourcePath,
+  });
+}
+
+export function getLanguagePack(
+  webResourceUrl: string | undefined,
+  defaultLanguagePack: LanguagePack
+): Promise<LanguagePack> {
+  const languagePack: LanguagePack = { ...defaultLanguagePack };
+
+  if (webResourceUrl === undefined) return Promise.resolve(languagePack);
+
+  return axios
+    .get(webResourceUrl)
+    .then((res) => {
+      const parser = new DOMParser();
+      const xmlDoc = parser.parseFromString(res.data, "text/xml");
+
+      const nodes = xmlDoc.getElementsByTagName("data");
+      for (let i = 0; i < nodes.length; i++) {
+        const node = nodes[i];
+        const key = node.getAttribute("name");
+        const value = node.getElementsByTagName("value")[0].childNodes[0].nodeValue ?? "";
+        if (key && value) {
+          languagePack[key as keyof LanguagePack] = value;
+        }
+      }
+
+      return languagePack;
+    })
+    .catch(() => languagePack);
 }
 
 async function getMetadata(lookupTable: string, lookupViewId: string): Promise<IMetadata> {

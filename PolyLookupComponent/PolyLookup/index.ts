@@ -1,7 +1,8 @@
-import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import * as React from "react";
 import PolyLookupControl, { PolyLookupProps, RelationshipTypeEnum } from "./components/PolyLookupControl";
+import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import { IExtendedContext } from "./types/extendedContext";
+import { LanguagePack } from "./types/languagePack";
 
 export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOutputs> {
   private theComponent: ComponentFramework.ReactControl<IInputs, IOutputs>;
@@ -9,6 +10,7 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
   private output: string | undefined;
   private outputSelectedItems: string | undefined;
   private context: IExtendedContext;
+  private languagePack: LanguagePack;
 
   /**
    * Empty constructor.
@@ -26,6 +28,22 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
   public init(context: IExtendedContext, notifyOutputChanged: () => void, state: ComponentFramework.Dictionary): void {
     this.notifyOutputChanged = notifyOutputChanged;
     this.context = context;
+    this.languagePack = {
+      AddNewLabel: context.resources.getString("AddNewLabel"),
+      ControlIsNotAvailableMessage: context.resources.getString("ControlIsNotAvailableMessage"),
+      CreateFormNotSupportedMessage: context.resources.getString("CreateFormNotSupportedMessage"),
+      EmptyListDefaultMessage: context.resources.getString("EmptyListDefaultMessage"),
+      EmptyListMessage: context.resources.getString("EmptyListMessage"),
+      LoadingMessage: context.resources.getString("LoadingMessage"),
+      PlaceholderDefault: context.resources.getString("PlaceholderDefault"),
+      Placeholder: context.resources.getString("Placeholder"),
+      RelationshipNotSupportedMessage: context.resources.getString("RelationshipNotSupportedMessage"),
+      SuggestionListHeaderDefaultLabel: context.resources.getString("SuggestionListHeaderDefaultLabel"),
+      SuggestionListHeaderLabel: context.resources.getString("SuggestionListHeaderLabel"),
+      LoadMoreLabel: context.resources.getString("LoadMoreLabel"),
+      NoMoreRecordsMessage: context.resources.getString("NoMoreRecordsMessage"),
+      SuggestionListFullMessage: context.resources.getString("SuggestionListFullMessage"),
+    };
   }
 
   /**
@@ -55,6 +73,8 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
       disabled: context.mode.isControlDisabled,
       formType: typeof Xrm === "undefined" ? undefined : Xrm.Page.ui.getFormType(),
       outputSelectedItems: !!context.parameters.outputField?.attributes?.LogicalName,
+      defaultLanguagePack: this.languagePack,
+      languagePackPath: context.parameters.languagePackPath?.raw ?? undefined,
       onChange:
         context.parameters.outputSelected?.raw === "1" || context.parameters.outputField?.attributes?.LogicalName
           ? this.onLookupChange

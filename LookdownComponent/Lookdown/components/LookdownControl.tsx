@@ -1,22 +1,23 @@
-import React from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Dropdown,
   DropdownMenuItemType,
-  IStyle,
-  IDropdownOption,
-  Stack,
-  Image,
-  Label,
-  ImageFit,
-  ILabelStyles,
-  IIconProps,
-  IContextualMenuProps,
-  IconButton,
   IContextualMenuItemStyles,
+  IContextualMenuProps,
+  IDropdownOption,
+  IIconProps,
+  ILabelStyles,
+  IStyle,
+  IconButton,
+  Image,
+  ImageFit,
+  Label,
+  Stack,
 } from "@fluentui/react";
-import { getCurrentRecord, useFetchXmlData, useMetadata } from "../services/DataverseService";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Handlebars from "handlebars";
+import React from "react";
+import { getCurrentRecord, useFetchXmlData, useLanguagePack, useMetadata } from "../services/DataverseService";
+import { LanguagePack } from "../types/languagePack";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,8 @@ export interface LookdownProps {
   allowQuickCreate?: boolean;
   allowLookupPanel?: boolean;
   disabled?: boolean;
+  defaultLanguagePack: LanguagePack;
+  languagePackPath?: string;
   onChange?: (selectedItem: ComponentFramework.LookupValue | null) => void;
 }
 
@@ -115,8 +118,14 @@ const Body = ({
   allowQuickCreate,
   allowLookupPanel,
   disabled,
+  defaultLanguagePack,
+  languagePackPath,
   onChange,
 }: LookdownProps) => {
+  const { data: loadedLanguagePack } = useLanguagePack(languagePackPath, defaultLanguagePack);
+
+  const languagePack = loadedLanguagePack ?? defaultLanguagePack;
+
   const {
     data: metadata,
     isLoading: isLoadingMetadata,
@@ -152,7 +161,7 @@ const Body = ({
     if (groupBy) {
       const grouped: Record<string, ComponentFramework.WebApi.Entity[]> = {};
       fetchData.forEach((item) => {
-        const key = item[groupBy]?.toString() ?? "(Blank)";
+        const key = item[groupBy]?.toString() ?? languagePack.BlankValueLabel;
 
         if (!grouped[key]) grouped[key] = [];
         grouped[key].push(item);
@@ -190,7 +199,7 @@ const Body = ({
     if (options.length === 0) {
       options.push({
         key: "no-records",
-        text: "No records found",
+        text: languagePack.EmptyListMessage,
         disabled: true,
       });
     }
@@ -353,7 +362,7 @@ const Body = ({
     items: [
       {
         key: "open-record",
-        text: "Open record",
+        text: languagePack.OpenRecordLabel,
         iconProps: { iconName: "OpenInNewWindow" },
         itemProps: { styles: !openRecordMode ? hiddenCommandStyle : visibleCommandStyle },
         disabled: !selectedId,
@@ -361,7 +370,7 @@ const Body = ({
       },
       {
         key: "quick-create",
-        text: "Quick create",
+        text: languagePack.QuickCreateLabel,
         itemProps: { styles: !allowQuickCreate ? hiddenCommandStyle : visibleCommandStyle },
         iconProps: { iconName: "Add" },
         disabled: !allowQuickCreate,
@@ -369,7 +378,7 @@ const Body = ({
       },
       {
         key: "lookup-panel",
-        text: "Lookup panel",
+        text: languagePack.LookupPanelLabel,
         itemProps: { styles: !allowLookupPanel ? hiddenCommandStyle : visibleCommandStyle },
         iconProps: { iconName: "LookupEntities" },
         disabled: !allowLookupPanel,

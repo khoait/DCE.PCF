@@ -43,3 +43,35 @@ I'll review your changes and work with you to merge them into the main repositor
 ### Git branches
 
 - **main**: This branch contains the latest features of the components. Please see [tags](https://github.com/khoait/DCE.PCF/tags) for version specific code
+
+### Build and test individual component in dev
+
+1. open the repo in VS Code
+2. in Terminal, navigate to a component folder `cd PolyLookupComponent` for example
+3. run `npm install` to install all required packages
+4. run `npm run build` to build the component
+5. to test the component, because the component needs to load metadata from Dataverse, we can't use the test harness by running `npm run start`. 
+   
+   Instead, we need to deploy the component to an environment by running 
+   ```
+   pac pcf push --publisher-prefix dce
+   ```
+
+   you'll need PowerApps CLI to run `pac` commands, please install it [here](https://learn.microsoft.com/en-us/power-platform/developer/cli/introduction)
+
+### Build the component package for production
+
+when you're ready, you can build a solution package that contains all components in the repo to deploy to a production environment.
+
+1. in Terminal, navigate to folder `cd DCEPCF/solution`
+2. for dotnet build, run  
+   ```
+   dotnet build --configuration Release
+   ```
+
+   for msbuild, run 
+   
+   ```
+   msbuild /t:build /restore /p:configuration=Release
+   ```
+3. you can find an managed solution and an unmanaged solution will be created in the output folder under `solution/bin/Release`

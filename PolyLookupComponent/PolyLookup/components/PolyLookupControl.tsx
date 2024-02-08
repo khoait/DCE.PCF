@@ -10,6 +10,7 @@ import {
 import { QueryClient, QueryClientProvider, useMutation } from "@tanstack/react-query";
 import Handlebars from "handlebars";
 import React, { useCallback } from "react";
+import { sprintf } from "sprintf-js";
 import {
   associateRecord,
   createRecord,
@@ -17,9 +18,11 @@ import {
   disassociateRecord,
   getCurrentRecord,
   retrieveMultipleFetch,
+  useLanguagePack,
   useMetadata,
   useSelectedItems,
 } from "../services/DataverseService";
+import { LanguagePack } from "../types/languagePack";
 import { IMetadata } from "../types/metadata";
 import { SuggestionInfo } from "./SuggestionInfo";
 
@@ -46,6 +49,8 @@ export interface PolyLookupProps {
   disabled?: boolean;
   formType?: XrmEnum.FormType;
   outputSelectedItems?: boolean;
+  defaultLanguagePack: LanguagePack;
+  languagePackPath?: string;
   onChange?: (selectedItems: ComponentFramework.EntityReference[] | undefined) => void;
   onQuickCreate?: (
     entityName: string | undefined,
@@ -72,40 +77,51 @@ const Body = ({
   disabled,
   formType,
   outputSelectedItems,
+  defaultLanguagePack,
+  languagePackPath,
   onChange,
   onQuickCreate,
 }: PolyLookupProps) => {
-  const pickerSuggestionsProps: IBasePickerSuggestionsProps = {
-    noResultsFoundText: "No records found",
-    forceResolveText: "Quick Create",
-    showForceResolve: () => onQuickCreate !== undefined,
-    resultsFooter: () => <div>No more records</div>,
-    resultsFooterFull: () => <div>Refine search term for more</div>,
-    resultsMaximumNumber: (pageSize ?? 50) * 2,
-    searchForMoreText: "Load more",
-  };
+  
   const [selectedItemsCreate, setSelectedItemsCreate] = React.useState<ComponentFramework.WebApi.Entity[]>([]);
 
   const pickerRef = React.useRef<TagPickerBase>(null);
 
+  const { data: loadedLanguagePack } = useLanguagePack(languagePackPath, defaultLanguagePack);
+
+  const languagePack = loadedLanguagePack ?? defaultLanguagePack;
+
+  const pickerSuggestionsProps: IBasePickerSuggestionsProps = {
+    suggestionsHeaderText: languagePack.SuggestionListHeaderDefaultLabel,
+    noResultsFoundText: languagePack.EmptyListDefaultMessage,
+    forceResolveText: languagePack.AddNewLabel,
+    showForceResolve: () => onQuickCreate !== undefined,
+    resultsFooter: () => <div>{languagePack.NoMoreRecordsMessage}</div>,
+    resultsFooterFull: () => <div>{languagePack.SuggestionListFullMessage}</div>,
+    resultsMaximumNumber: (pageSize ?? 50) * 2,
+    searchForMoreText: languagePack.LoadMoreLabel,
+  };
+
   const getPlaceholder = () => {
     if (formType === XrmEnum.FormType.Create) {
       if (!outputSelectedItems) {
-        return "Please save the record first";
+        return languagePack.CreateFormNotSupportedMessage;
       }
     } else if (formType !== XrmEnum.FormType.Update) {
-      return "The control is not available in this form";
+      return languagePack.ControlIsNotAvailableMessage;
     }
 
     if (isDataLoading) {
-      return "Loading";
+      return languagePack.LoadingMessage;
     }
 
     if (selectedItems?.length || selectedItemsCreate.length || disabled) {
       return "";
     }
 
-    return `Select ${metadata?.associatedEntity.DisplayCollectionNameLocalized ?? "an item"}`;
+    return metadata?.associatedEntity.DisplayCollectionNameLocalized
+      ? sprintf(languagePack.Placeholder, metadata?.associatedEntity.DisplayCollectionNameLocalized)
+      : languagePack.PlaceholderDefault;
   };
 
   const shouldDisable = () => {
@@ -133,8 +149,13 @@ const Body = ({
   );
 
   if (metadata && isLoadingMetadataSuccess) {
-    pickerSuggestionsProps.suggestionsHeaderText = `Suggested ${metadata.associatedEntity.DisplayCollectionNameLocalized}`;
-    pickerSuggestionsProps.noResultsFoundText = `No ${metadata.associatedEntity.DisplayCollectionNameLocalized} found`;
+    pickerSuggestionsProps.suggestionsHeaderText = metadata.associatedEntity.DisplayCollectionNameLocalized
+      ? sprintf(languagePack.SuggestionListHeaderLabel, metadata.associatedEntity.DisplayCollectionNameLocalized)
+      : languagePack.SuggestionListHeaderDefaultLabel;
+
+    pickerSuggestionsProps.noResultsFoundText = metadata.associatedEntity.DisplayCollectionNameLocalized
+      ? sprintf(languagePack.EmptyListMessage, metadata.associatedEntity.DisplayCollectionNameLocalized)
+      : languagePack.EmptyListDefaultMessage;
   }
 
   const associatedTableSetName = metadata?.associatedEntity.EntitySetName ?? "";
@@ -232,7 +253,7 @@ const Body = ({
           [`${metadata?.associatedEntityNavigationPropertyName}@odata.bind`]: `/${metadata?.associatedEntity.EntitySetName}(${id})`,
         });
       }
-      return Promise.reject("Relationship type not supported");
+      return Promise.reject(languagePack.RelationshipNotSupportedMessage);
     },
     onSuccess: (data, variables, context) => {
       selectedItemsRefetch();
@@ -250,7 +271,7 @@ const Body = ({
       ) {
         return deleteRecord(metadata?.intersectEntity.EntitySetName, id);
       }
-      return Promise.reject("Relationship type not supported");
+      return Promise.reject(languagePack.RelationshipNotSupportedMessage);
     },
     onSuccess: (data, variables, context) => {
       selectedItemsRefetch();

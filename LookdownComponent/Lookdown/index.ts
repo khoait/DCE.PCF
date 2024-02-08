@@ -1,12 +1,14 @@
+import * as React from "react";
 import LookdownControl, { IconSizes, OpenRecordMode, ShowIconOptions } from "./components/LookdownControl";
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
-import * as React from "react";
+import { LanguagePack } from "./types/languagePack";
 
 export class Lookdown implements ComponentFramework.ReactControl<IInputs, IOutputs> {
   private theComponent: ComponentFramework.ReactControl<IInputs, IOutputs>;
   private notifyOutputChanged: () => void;
   private output: ComponentFramework.LookupValue | null;
   private context: ComponentFramework.Context<IInputs>;
+  private languagePack: LanguagePack;
 
   /**
    * Empty constructor.
@@ -28,7 +30,13 @@ export class Lookdown implements ComponentFramework.ReactControl<IInputs, IOutpu
   ): void {
     this.notifyOutputChanged = notifyOutputChanged;
     this.context = context;
-    console.log("init", context);
+    this.languagePack = {
+      BlankValueLabel: context.resources.getString("BlankValueLabel"),
+      EmptyListMessage: context.resources.getString("EmptyListMessage"),
+      OpenRecordLabel: context.resources.getString("OpenRecordLabel"),
+      QuickCreateLabel: context.resources.getString("QuickCreateLabel"),
+      LookupPanelLabel: context.resources.getString("LookupPanelLabel"),
+    };
   }
 
   /**
@@ -61,6 +69,8 @@ export class Lookdown implements ComponentFramework.ReactControl<IInputs, IOutpu
       allowQuickCreate: context.parameters.commandQuickCreate?.raw === "1",
       allowLookupPanel: context.parameters.commandQuickCreate?.raw === "1",
       disabled: context.mode.isControlDisabled,
+      defaultLanguagePack: this.languagePack,
+      languagePackPath: context.parameters.languagePackPath?.raw ?? undefined,
       onChange: (value) => {
         this.output = value;
         this.notifyOutputChanged();
