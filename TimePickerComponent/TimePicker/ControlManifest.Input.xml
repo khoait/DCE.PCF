@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="DCEPCF" constructor="TimePicker" version="0.0.2" display-name-key="TimePicker" description-key="TimePicker displays the time part and supports quick values with a dropdown" control-type="standard" >
+    <external-service-usage enabled="false">   
+    </external-service-usage>    
+    <property name="boundField" display-name-key="Bound Field" description-key="The field that the component is bound to" of-type="DateAndTime.DateAndTime" usage="bound" required="true" />    
+    <type-group name="datetime">
+      <type>DateAndTime.DateAndTime</type>
+      <type>DateAndTime.DateOnly</type>      
+    </type-group>        
+    <resources>
+      <code path="index.ts" order="1"/>      
+    </resources>    
+  </control>
+</manifest>
