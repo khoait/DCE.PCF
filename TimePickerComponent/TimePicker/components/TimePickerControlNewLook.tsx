@@ -63,6 +63,7 @@ export default function TimePickerControlNewLook({
         className={styles.root}
         defaultSelectedTime={now}
         defaultValue={formatDateToTimeString(now)}
+        placeholder=""
       />
     </FluentProvider>
   );

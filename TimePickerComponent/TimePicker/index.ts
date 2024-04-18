@@ -3,7 +3,9 @@ import { createRoot, Root } from "react-dom/client";
 import TimePickerControl from "./components/TimePickerControl";
 import TimePickerControlNewLook from "./components/TimePickerControlNewLook";
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
+import { convertDate, getUtcDate } from "./services/dateService";
 import { IExtendedContext } from "./types/extendedContext";
+import { TimePickerControlProps } from "./types/typings";
 
 export class TimePicker
   implements ComponentFramework.StandardControl<IInputs, IOutputs>
@@ -12,6 +14,7 @@ export class TimePicker
   private container: HTMLDivElement;
   private notifyOutputChanged: () => void;
   private root: Root;
+  private outputValue: Date | null;
   /**
    * Empty constructor.
    */
@@ -51,7 +54,9 @@ export class TimePicker
    * @returns an object based on nomenclature defined in manifest, expecting object[s] for property marked as “bound” or “output”
    */
   public getOutputs(): IOutputs {
-    return {};
+    return {
+      boundField: this.outputValue ?? undefined,
+    };
   }
 
   /**
@@ -59,18 +64,60 @@ export class TimePicker
    * i.e. cancelling any pending remote calls, removing listeners, etc.
    */
   public destroy(): void {
-    // Add code to cleanup control if necessary
+    this.root.unmount();
   }
 
   public render(): void {
     const isNewLook = !!this.context.fluentDesignLanguage;
+
+    const boundValue = this.convertToLocalDate(
+      this.context.parameters.boundField
+    );
+    const dateAnchor = this.convertToLocalDate(
+      this.context.parameters.dateAnchor
+    );
+
+    const props: TimePickerControlProps = {
+      inputValue: boundValue,
+      dateAnchor: dateAnchor,
+      disabled: this.context.mode.isControlDisabled,
+      placeholder: this.context.parameters.placeholder.raw ?? undefined,
+      increment: this.context.parameters.increment.raw ?? undefined,
+      hourCycle12: this.context.parameters.hourCycle12.raw === "1",
+      freeform: this.context.parameters.freeform.raw === "1",
+      startHour: this.context.parameters.startHour.raw ?? undefined,
+      endHour: this.context.parameters.endHour.raw ?? undefined,
+      onTimeChange: (time) => {
+        this.outputValue = time;
+        this.notifyOutputChanged();
+      },
+    };
 
     this.root.render(
       isNewLook
         ? React.createElement(TimePickerControlNewLook, {
             theme: this.context.fluentDesignLanguage?.tokenTheme,
           })
-        : React.createElement(TimePickerControl)
+        : React.createElement(TimePickerControl, {
+            key: boundValue ? boundValue.getTime() : 0,
+            ...props,
+          })
     );
+  }
+
+  public convertToLocalDate(
+    dateProperty: ComponentFramework.PropertyTypes.DateTimeProperty
+  ) {
+    if (dateProperty.attributes?.Behavior === 1) {
+      // user local
+      if (!dateProperty.raw) return null;
+
+      return convertDate(
+        dateProperty.raw,
+        this.context.userSettings.getTimeZoneOffsetMinutes(dateProperty.raw)
+      );
+    } else {
+      return getUtcDate(dateProperty.raw);
+    }
   }
 }

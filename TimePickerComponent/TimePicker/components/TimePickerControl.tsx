@@ -1,5 +1,11 @@
-import { IComboBoxStyles, IStyle, TimePicker } from "@fluentui/react";
-import React from "react";
+import {
+  IComboBoxStyles,
+  IStyle,
+  ITimeRange,
+  TimePicker,
+} from "@fluentui/react";
+import React, { useCallback, useState } from "react";
+import { isValidDate } from "../services/dateService";
 import { TimePickerControlProps } from "../types/typings";
 
 const BORDER_HIGHLIGHT: IStyle = {
@@ -86,8 +92,73 @@ const timePickerStyes: Partial<IComboBoxStyles> = {
 };
 
 export default function TimePickerControl({
+  inputValue,
+  dateAnchor,
   disabled,
+  placeholder,
+  freeform,
+  hourCycle12,
+  increment,
+  startHour,
+  endHour,
+  onTimeChange,
 }: TimePickerControlProps) {
-  const now = new Date();
-  return <TimePicker defaultValue={now} styles={timePickerStyes} />;
+  const [selectedTime, setSelectedTime] = useState<Date | null>(
+    inputValue ?? null
+  );
+
+  const onChange = useCallback((_: any, newTime: Date) => {
+    console.log(newTime);
+    let newValue: Date | null = null;
+    if (isValidDate(newTime)) {
+      newValue = newTime;
+    }
+    setSelectedTime(newValue);
+    if (onTimeChange) {
+      onTimeChange(newValue);
+    }
+  }, []);
+
+  let range: ITimeRange | undefined = undefined;
+  let start = 0;
+  let end = 24;
+  if (startHour !== undefined) {
+    start = startHour;
+    if (startHour > 23) {
+      start = 23;
+    } else if (startHour < 0) {
+      start = 0;
+    }
+  }
+
+  if (endHour !== undefined) {
+    end = endHour;
+    if (endHour > 24) {
+      end = 24;
+    } else if (endHour < 1) {
+      end = 1;
+    }
+  }
+
+  if (startHour !== undefined || endHour !== undefined) {
+    range = {
+      start: start > end ? end : start,
+      end: end < start ? start : end,
+    };
+  }
+
+  return (
+    <TimePicker
+      value={selectedTime ?? undefined}
+      dateAnchor={dateAnchor ?? undefined}
+      disabled={disabled}
+      placeholder={placeholder}
+      increments={increment ?? undefined}
+      allowFreeform={freeform ?? false}
+      useHour12={hourCycle12 ?? false}
+      timeRange={range}
+      onChange={onChange}
+      styles={timePickerStyes}
+    />
+  );
 }
