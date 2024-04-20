@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DCEPCF" constructor="TimePicker" version="0.0.3" display-name-key="TimePicker" description-key="TimePicker displays the time part and supports quick values with a dropdown" control-type="standard" >
+  <control namespace="DCEPCF" constructor="TimePicker" version="1.0.0" display-name-key="TimePicker" description-key="TimePicker displays the time part and supports quick values with a dropdown" control-type="standard" >
     <external-service-usage enabled="false">   
     </external-service-usage>    
     <property name="boundField" display-name-key="Bound Field" description-key="The field that the component is bound to" of-type="DateAndTime.DateAndTime" usage="bound" required="true" />   
@@ -11,7 +11,7 @@
       <value name="false" display-name-key="No">0</value>
       <value name="true" display-name-key="Yes">1</value>
     </property>
-    <property name="freeform" display-name-key="Freeform" description-key="If true, the TimePicker allows freeform user input, rather than restricting to the default increments. The input will still be restricted to valid time values. Default: No" of-type="Enum" usage="input" required="false" default-value="0">
+    <property name="freeform" display-name-key="Freeform" description-key="If true, the TimePicker allows freeform user input, rather than restricting to the default increments. The input will still be restricted to valid time values. Default: No." of-type="Enum" usage="input" required="false" default-value="0">
       <value name="false" display-name-key="No">0</value>
       <value name="true" display-name-key="Yes">1</value>
     </property>

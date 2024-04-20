@@ -93,13 +93,17 @@ export class TimePicker
       },
     };
 
+    const key = boundValue ? boundValue.getTime() : 0;
+
     this.root.render(
       isNewLook
         ? React.createElement(TimePickerControlNewLook, {
+            key,
             theme: this.context.fluentDesignLanguage?.tokenTheme,
+            ...props,
           })
         : React.createElement(TimePickerControl, {
-            key: boundValue ? boundValue.getTime() : 0,
+            key,
             ...props,
           })
     );

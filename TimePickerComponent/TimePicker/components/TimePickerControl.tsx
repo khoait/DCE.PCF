@@ -107,7 +107,7 @@ export default function TimePickerControl({
     inputValue ?? null
   );
 
-  const onChange = useCallback((_: any, newTime: Date) => {
+  const handleOnChange = useCallback((_: any, newTime: Date) => {
     console.log(newTime);
     let newValue: Date | null = null;
     if (isValidDate(newTime)) {
@@ -153,11 +153,11 @@ export default function TimePickerControl({
       dateAnchor={dateAnchor ?? undefined}
       disabled={disabled}
       placeholder={placeholder}
-      increments={increment ?? undefined}
+      increments={increment}
       allowFreeform={freeform ?? false}
       useHour12={hourCycle12 ?? false}
       timeRange={range}
-      onChange={onChange}
+      onChange={handleOnChange}
       styles={timePickerStyes}
     />
   );
