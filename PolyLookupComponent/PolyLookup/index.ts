@@ -1,5 +1,5 @@
 import * as React from "react";
-import PolyLookupControl, { PolyLookupProps, RelationshipTypeEnum } from "./components/PolyLookupControl";
+import PolyLookupControl, { PolyLookupProps, RelationshipTypeEnum, TagAction } from "./components/PolyLookupControl";
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import { IExtendedContext } from "./types/extendedContext";
 import { LanguagePack } from "./types/languagePack";
@@ -73,6 +73,9 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
       disabled: context.mode.isControlDisabled,
       formType: typeof Xrm === "undefined" ? undefined : Xrm.Page.ui.getFormType(),
       outputSelectedItems: !!context.parameters.outputField?.attributes?.LogicalName,
+      tagAction: context.parameters.tagAction?.raw
+        ? (Number.parseInt(context.parameters.tagAction.raw) as TagAction)
+        : undefined,
       defaultLanguagePack: this.languagePack,
       languagePackPath: context.parameters.languagePackPath?.raw ?? undefined,
       onChange:
