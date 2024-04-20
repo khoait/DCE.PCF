@@ -12,6 +12,7 @@ The components included in this repository are fully documented with examples an
 
 1. **[PolyLookup](https://github.com/khoait/DCE.PCF/wiki/PolyLookup)**: Multi-select lookup supporting different types of many-to-many relationships.
 2. **[Lookdown](https://github.com/khoait/DCE.PCF/wiki/Lookdown)**: Lookup field as a dropdown with advanced features.
+3. **[TimePicker](https://github.com/khoait/DCE.PCF/wiki/TimePicker)**: TimePicker only displays the time part of a datetime field and supports quick values from a dropdown.
 
 ## ⚙️ Installation
 
@@ -74,4 +75,4 @@ when you're ready, you can build a solution package that contains all components
    ```
    msbuild /t:build /restore /p:configuration=Release
    ```
-3. you can find an managed solution and an unmanaged solution will be created in the output folder under `solution/bin/Release`
+3. you can find a managed solution and an unmanaged solution created in the output folder under `solution/bin/Release`
