@@ -1,8 +1,10 @@
 import {
+  ActionButton,
   IBasePickerStyles,
   IBasePickerSuggestionsProps,
   ITag,
   ITagItemProps,
+  TagItem,
   TagPicker,
   TagPickerBase,
   ValidationState,
@@ -36,6 +38,14 @@ export enum RelationshipTypeEnum {
   Connection,
 }
 
+export enum TagAction {
+  None = 0,
+  OpenInline = 1,
+  OpenDialog = 2,
+  OpenInlineIntersect = 3,
+  OpenDialogIntersect = 4,
+}
+
 export interface PolyLookupProps {
   currentTable: string;
   currentRecordId: string;
@@ -49,6 +59,7 @@ export interface PolyLookupProps {
   disabled?: boolean;
   formType?: XrmEnum.FormType;
   outputSelectedItems?: boolean;
+  tagAction?: TagAction;
   defaultLanguagePack: LanguagePack;
   languagePackPath?: string;
   onChange?: (selectedItems: ComponentFramework.EntityReference[] | undefined) => void;
@@ -77,12 +88,12 @@ const Body = ({
   disabled,
   formType,
   outputSelectedItems,
+  tagAction,
   defaultLanguagePack,
   languagePackPath,
   onChange,
   onQuickCreate,
 }: PolyLookupProps) => {
-  
   const [selectedItemsCreate, setSelectedItemsCreate] = React.useState<ComponentFramework.WebApi.Entity[]>([]);
 
   const pickerRef = React.useRef<TagPickerBase>(null);
@@ -433,6 +444,35 @@ const Body = ({
     return ValidationState.invalid;
   };
 
+  const onTagClick = async (item: ITagWithData) => {
+    if (!tagAction) return;
+    if (!metadata?.associatedEntity) return;
+
+    let targetEntity = metadata?.associatedEntity.LogicalName;
+    let targetId = item.key as string;
+
+    if (
+      (relationshipType === RelationshipTypeEnum.Custom || relationshipType === RelationshipTypeEnum.Connection) &&
+      (tagAction === TagAction.OpenDialogIntersect || tagAction === TagAction.OpenInlineIntersect)
+    ) {
+      targetEntity = metadata.intersectEntity.LogicalName;
+      targetId = item.data[metadata?.intersectEntity.PrimaryIdAttribute];
+    }
+
+    await Xrm.Navigation.navigateTo(
+      {
+        pageType: "entityrecord",
+        entityName: targetEntity,
+        entityId: targetId,
+      },
+      { target: tagAction === TagAction.OpenDialog || tagAction === TagAction.OpenDialogIntersect ? 2 : 1 }
+    );
+
+    if (tagAction === TagAction.OpenDialog || tagAction === TagAction.OpenDialogIntersect) {
+      selectedItemsRefetch();
+    }
+  };
+
   const isDataLoading = (isLoadingMetadata || isLoadingSelectedItems) && !shouldDisable();
 
   return (
@@ -447,9 +487,8 @@ const Body = ({
       onGetMoreResults={showMoreSuggestions}
       onChange={onPickerChange}
       onItemSelected={onItemSelected}
-      styles={(props) => {
+      styles={({ isFocused }) => {
         // eslint-disable-next-line react/prop-types
-        const isFocused = props.isFocused;
         const pickerStyles: Partial<IBasePickerStyles> = {
           root: { backgroundColor: "#fff", width: "100%" },
           input: { minWidth: "0", display: disabled ? "none" : "inline-block" },
@@ -472,10 +511,38 @@ const Body = ({
       pickerSuggestionsProps={pickerSuggestionsProps}
       disabled={disabled || shouldDisable()}
       onRenderItem={(props: ITagItemProps) => {
-        if (disabled) {
-          props.styles = { close: { display: "none" } };
-        }
-        return TagPickerBase.defaultProps.onRenderItem(props);
+        props.styles = {
+          close: [disabled && { display: "none" }],
+          root: [
+            !!tagAction && {
+              "&:focus-within button": {
+                color: "#fff",
+              },
+              "&:focus-within:hover button": {
+                color: "#fff",
+              },
+              "&:focus-within .ms-TagItem-close:hover": {
+                color: "#fff",
+                backgroundColor: "#005a9e",
+              },
+            },
+          ],
+        };
+
+        return (
+          <TagItem {...props}>
+            {tagAction ? (
+              <ActionButton
+                styles={{ root: { height: "100%" } }}
+                onClick={() => onTagClick(props.item as ITagWithData)}
+              >
+                {props.item.name}
+              </ActionButton>
+            ) : (
+              props.item.name
+            )}
+          </TagItem>
+        );
       }}
       onRenderSuggestionsItem={(tag: ITag) => {
         const data = (tag as ITagWithData).data;
