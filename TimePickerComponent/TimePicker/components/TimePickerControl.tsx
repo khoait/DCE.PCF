@@ -159,6 +159,10 @@ export default function TimePickerControl({
       timeRange={range}
       onChange={handleOnChange}
       styles={timePickerStyes}
+      buttonIconProps={{
+        iconName: "Clock",
+        styles: { root: { height: "16px", fontSize: "16px" } },
+      }}
     />
   );
 }

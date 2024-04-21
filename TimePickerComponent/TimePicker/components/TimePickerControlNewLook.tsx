@@ -5,6 +5,7 @@ import {
   shorthands,
   tokens,
 } from "@fluentui/react-components";
+import { Clock16Regular } from "@fluentui/react-icons";
 import {
   TimePicker,
   TimePickerProps,
@@ -20,30 +21,15 @@ const useStyles = makeStyles({
     ...shorthands.borderColor(tokens.colorTransparentStroke),
     ":hover": {
       ...shorthands.borderColor(tokens.colorTransparentStroke),
-      "&>.fui-TimePicker__expandIcon": {
-        visibility: "visible",
-      },
     },
     ":active": {
       ...shorthands.borderColor(tokens.colorTransparentStroke),
-      "&>.fui-TimePicker__expandIcon": {
-        visibility: "visible",
-      },
     },
     ":focus": {
       ...shorthands.borderColor(tokens.colorTransparentStroke),
-      "&>.fui-TimePicker__expandIcon": {
-        visibility: "visible",
-      },
     },
     ":focus-within": {
       ...shorthands.borderColor(tokens.colorTransparentStroke),
-      "&>.fui-TimePicker__expandIcon": {
-        visibility: "visible",
-      },
-    },
-    "&>.fui-TimePicker__expandIcon": {
-      visibility: "hidden",
     },
   },
 });
@@ -125,6 +111,7 @@ export default function TimePickerControlNewLook({
         endHour={end as any}
         onTimeChange={handleTimeChange}
         onInput={freeform ? handleOnInput : undefined}
+        expandIcon={<Clock16Regular />}
       />
     </FluentProvider>
   );
