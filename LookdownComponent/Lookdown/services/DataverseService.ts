@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import Handlebars from "handlebars";
-import { getHandlebarsVariables } from "../services/TemplateHelper";
 import { LanguagePack } from "../types/languagePack";
 import { IEntityDefinition, IMetadata, IViewDefinition, IViewLayout } from "../types/metadata";
+import { EntityOption, IconSizes, ShowIconOptions } from "../types/typings";
+import { getFetchTemplateString, getHandlebarsVariables } from "./TemplateService";
 
 const tableDefinitionColumns = [
   "LogicalName",
@@ -23,39 +24,71 @@ const viewDefinitionColumns = ["savedqueryid", "name", "fetchxml", "layoutjson",
 
 const apiVersion = "9.2";
 
-export function useMetadata(
-  lookupTable: string | null | undefined,
-  lookupViewId: string | null | undefined,
-  entityIcon = false
-) {
+export function useMetadata(lookupTable: string, lookupViewId: string) {
   return useQuery({
     queryKey: ["metadata", lookupTable, lookupViewId],
-    queryFn: () => getMetadata(lookupTable ?? "", lookupViewId ?? ""),
+    queryFn: () => getMetadata(lookupTable, lookupViewId),
     enabled: !!lookupTable && !!lookupViewId,
   });
 }
 
-export function useFetchXmlData(
-  entitySetName: string | null | undefined,
-  lookupViewId: string | null | undefined,
-  fetchXml: string | undefined,
+export function useEntityOptions(
+  metadata: IMetadata | undefined,
   customFilter?: string | null,
   groupBy?: string | null,
   optionTemplate?: string | null,
-  selectedItemTemplate?: string | null
+  selectedItemTemplate?: string | null,
+  iconOptions?: ShowIconOptions,
+  iconSize?: IconSizes
 ) {
-  const templateColumns: string[] = [];
-  if (optionTemplate || selectedItemTemplate) {
-    templateColumns.push(...getHandlebarsVariables(optionTemplate ?? "" + " " + selectedItemTemplate ?? ""));
+  const entitySetName = metadata?.lookupEntity.EntitySetName ?? "";
+  const lookupViewFetchXml = metadata?.lookupView.fetchxml ?? "";
+
+  const entityIcon =
+    metadata?.lookupEntity.IconVectorName ??
+    (iconSize === IconSizes.Large
+      ? metadata?.lookupEntity.IconMediumName ?? metadata?.lookupEntity.IconSmallName
+      : metadata?.lookupEntity.IconSmallName);
+
+  const recordImageUrlTemplate = metadata?.lookupEntity.RecordImageUrlTemplate;
+
+  let iconTemplate = "";
+  if (iconOptions === ShowIconOptions.RecordImage) {
+    iconTemplate = recordImageUrlTemplate ?? "";
+  } else if (iconOptions === ShowIconOptions.EntityIcon) {
+    iconTemplate = entityIcon ?? "";
   }
 
   return useQuery({
-    queryKey: ["fetchdata", entitySetName, lookupViewId],
+    queryKey: [
+      "entityRecords",
+      entitySetName,
+      lookupViewFetchXml,
+      customFilter,
+      groupBy,
+      optionTemplate,
+      selectedItemTemplate,
+    ],
     queryFn: () => {
-      const populatedFetchXml = getFetchTemplateString(fetchXml ?? "", customFilter, templateColumns);
-      return retrieveMultipleFetch(entitySetName ?? "", populatedFetchXml, groupBy);
+      const templateColumns: string[] = [];
+      if (optionTemplate || selectedItemTemplate) {
+        templateColumns.push(...getHandlebarsVariables(optionTemplate ?? "" + " " + selectedItemTemplate ?? ""));
+      }
+      const populatedFetchXml = getFetchTemplateString(lookupViewFetchXml ?? "", customFilter, templateColumns);
+      return getEntityRecords(
+        entitySetName,
+        metadata?.lookupEntity.PrimaryIdAttribute ?? "",
+        metadata?.lookupEntity.PrimaryNameAttribute ?? "",
+        populatedFetchXml,
+        groupBy,
+        optionTemplate,
+        selectedItemTemplate,
+        iconOptions,
+        iconTemplate,
+        iconSize
+      );
     },
-    enabled: !!entitySetName && !!lookupViewId && !!fetchXml,
+    enabled: !!entitySetName && !!lookupViewFetchXml,
   });
 }
 
@@ -186,6 +219,45 @@ export async function getLookupViewDefinition(entityName: string) {
   const layout = JSON.parse(layoutjson) as IViewLayout;
   view.layoutjson = layout;
   return view;
+}
+
+async function getEntityRecords(
+  entitySetName: string,
+  primaryIdAttribute: string,
+  primaryNameAttribute: string,
+  fetchXml: string,
+  groupBy?: string | null,
+  optionTemplate?: string | null,
+  selectedOptionTemplate?: string | null,
+  iconOptions?: ShowIconOptions,
+  iconTemplate?: string | null,
+  iconSize?: IconSizes
+) {
+  const results = await retrieveMultipleFetch(entitySetName, fetchXml, groupBy);
+
+  const optionTemplateFn = optionTemplate ? Handlebars.compile(optionTemplate) : null;
+  const selectedOpionTemplateFn = selectedOptionTemplate ? Handlebars.compile(selectedOptionTemplate) : null;
+
+  const iconTemplateFn =
+    iconTemplate && iconOptions === ShowIconOptions.RecordImage ? Handlebars.compile(iconTemplate) : null;
+
+  return results.map((record) => {
+    let iconSrc = "";
+    if (iconOptions === ShowIconOptions.EntityIcon) {
+      iconSrc = iconTemplate ?? "";
+    } else if (iconOptions === ShowIconOptions.RecordImage) {
+      iconSrc = iconTemplateFn?.(record) ?? "";
+    }
+    return {
+      id: record[primaryIdAttribute],
+      primaryName: record[primaryNameAttribute],
+      optionText: optionTemplateFn?.(record) ?? record[primaryNameAttribute],
+      selectedOptionText: selectedOpionTemplateFn?.(record) ?? record[primaryNameAttribute],
+      iconSrc,
+      iconSize: iconSize === IconSizes.Large ? 32 : 16,
+      group: record[groupBy ?? ""],
+    } as EntityOption;
+  });
 }
 
 async function retrieveMultipleFetch(entitySetName: string, fetchXml: string, groupBy?: string | null) {
