@@ -242,6 +242,9 @@ const Body = ({
                                 }
                                 searchText = "%" + searchText + "%";
                             }
+                            else {
+                                searchText = searchText + "%";
+                            }
                             searchText = searchText.split("*").join("%");
                             condition.setAttribute("operator", "like");
                             condition.setAttribute("value", `${searchText}`);
