@@ -53,7 +53,6 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
    */
   public updateView(context: IExtendedContext): React.ReactElement {
     this.context = context;
-
     let clientUrl = "";
 
     try {
@@ -85,6 +84,7 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
       onQuickCreate: context.parameters.allowQuickCreate?.raw === "1" ? this.onQuickCreate : undefined,
     };
     return React.createElement(PolyLookupControl, props);
+    //return React.createElement("div", "test");
   }
 
   /**
