@@ -127,8 +127,7 @@ const Body = ({
     relationshipName,
     relationshipType === RelationshipTypeEnum.Custom || relationshipType === RelationshipTypeEnum.Connection
       ? relationship2Name
-      : undefined,
-    lookupView
+      : undefined
   );
 
   // get LookupView configuration

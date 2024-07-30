@@ -46,15 +46,10 @@ const viewDefinitionColumns = ["savedqueryid", "name", "fetchxml", "layoutjson",
 
 const apiVersion = "9.2";
 
-export function useMetadata(
-  currentTable: string,
-  relationshipName: string,
-  relationship2Name: string | undefined,
-  lookupView: string | undefined
-) {
+export function useMetadata(currentTable: string, relationshipName: string, relationship2Name: string | undefined) {
   return useQuery({
-    queryKey: ["metadata", currentTable, relationshipName, relationship2Name, lookupView],
-    queryFn: () => getMetadata(currentTable, relationshipName, relationship2Name, lookupView),
+    queryKey: ["metadata", currentTable, relationshipName, relationship2Name],
+    queryFn: () => getMetadata(currentTable, relationshipName, relationship2Name),
     enabled: !!currentTable && !!relationshipName,
   });
 }
@@ -249,8 +244,7 @@ export async function getDefaultView(entityName: string | undefined, viewName: s
 async function getMetadata(
   currentTable: string | undefined,
   relationshipName: string | undefined,
-  relationship2Name: string | undefined,
-  associatedViewName: string | undefined
+  relationship2Name: string | undefined
 ): Promise<IMetadata> {
   if (typeof currentTable === "undefined" || typeof relationshipName === "undefined")
     return Promise.reject(new Error("Invalid arguments"));
@@ -279,7 +273,6 @@ async function getMetadata(
       getEntityDefinition(currentTable),
       getEntityDefinition(intersectEntityName),
       getEntityDefinition(associatedEntityName),
-      //getDefaultView(associatedEntityName, associatedViewName),
     ]);
 
     let currentIntesectAttribute: string;
@@ -309,7 +302,6 @@ async function getMetadata(
       currentEntity,
       intersectEntity,
       associatedEntity,
-      //associatedView,
       currentIntesectAttribute,
       associatedIntesectAttribute,
       currentEntityNavigationPropertyName,
