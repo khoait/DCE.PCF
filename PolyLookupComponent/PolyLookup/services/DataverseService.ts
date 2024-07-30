@@ -68,7 +68,7 @@ export function useLookupViewConfig(
   return useQuery({
     queryKey: ["lookupViewConfig", associatedEntityName, lookupViewValue],
     queryFn: () => getLookupViewConfig(associatedEntityName, primaryIdAttribute, primaryNameAttribute, lookupViewValue),
-    enabled: !!associatedEntityName && !!primaryIdAttribute && !!primaryNameAttribute && !!lookupViewValue,
+    enabled: !!associatedEntityName && !!primaryIdAttribute && !!primaryNameAttribute,
   });
 }
 
@@ -330,13 +330,12 @@ async function getLookupViewConfig(
   if (
     typeof associatedEntityName === "undefined" ||
     typeof primaryIdAttribute === "undefined" ||
-    typeof primaryNameAttribute === "undefined" ||
-    typeof lookupViewValue === "undefined"
+    typeof primaryNameAttribute === "undefined"
   ) {
     throw new Error("Invalid arguments");
   }
 
-  const lookupViewVal = lookupViewValue.trim();
+  const lookupViewVal = lookupViewValue?.trim() ?? "";
   let lookupViewConfig: LookupView | undefined;
 
   // check if lookupViewValue is a fetchXml
