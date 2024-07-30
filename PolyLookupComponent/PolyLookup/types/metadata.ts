@@ -91,7 +91,6 @@ export interface IMetadata {
   currentEntity: IEntityDefinition;
   intersectEntity: IEntityDefinition;
   associatedEntity: IEntityDefinition;
-  associatedView?: IViewDefinition;
   currentIntesectAttribute: string;
   associatedIntesectAttribute: string;
   currentEntityNavigationPropertyName?: string;
