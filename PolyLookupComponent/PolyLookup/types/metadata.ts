@@ -91,7 +91,6 @@ export interface IMetadata {
   currentEntity: IEntityDefinition;
   intersectEntity: IEntityDefinition;
   associatedEntity: IEntityDefinition;
-  associatedView: IViewDefinition;
   currentIntesectAttribute: string;
   associatedIntesectAttribute: string;
   currentEntityNavigationPropertyName?: string;
@@ -104,4 +103,12 @@ export const isOneToMany = (r: IRelationshipDefinition | undefined): r is IOneTo
 
 export const isManyToMany = (r: IRelationshipDefinition | undefined): r is IManyToManyRelationship => {
   return r?.RelationshipType === "ManyToManyRelationship";
+};
+
+export type LookupView = {
+  sourceType: "FetchXml" | "ODataUrl" | "EnvironmentVariable" | "ViewName";
+  source: string;
+  fetchXml: string;
+  columns: string[];
+  isSystemLookupView: boolean;
 };

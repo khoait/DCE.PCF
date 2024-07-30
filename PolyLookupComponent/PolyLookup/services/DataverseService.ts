@@ -9,6 +9,7 @@ import {
   isManyToMany,
   IViewDefinition,
   IViewLayout,
+  LookupView,
 } from "../types/metadata";
 
 const nToNColumns = [
@@ -45,16 +46,24 @@ const viewDefinitionColumns = ["savedqueryid", "name", "fetchxml", "layoutjson",
 
 const apiVersion = "9.2";
 
-export function useMetadata(
-  currentTable: string,
-  relationshipName: string,
-  relationship2Name: string | undefined,
-  lookupView: string | undefined
+export function useMetadata(currentTable: string, relationshipName: string, relationship2Name: string | undefined) {
+  return useQuery({
+    queryKey: ["metadata", currentTable, relationshipName, relationship2Name],
+    queryFn: () => getMetadata(currentTable, relationshipName, relationship2Name),
+    enabled: !!currentTable && !!relationshipName,
+  });
+}
+
+export function useLookupViewConfig(
+  associatedEntityName: string | undefined,
+  primaryIdAttribute: string | undefined,
+  primaryNameAttribute: string | undefined,
+  lookupViewValue: string | undefined
 ) {
   return useQuery({
-    queryKey: ["metadata", currentTable, relationshipName, relationship2Name, lookupView],
-    queryFn: () => getMetadata(currentTable, relationshipName, relationship2Name, lookupView),
-    enabled: !!currentTable && !!relationshipName,
+    queryKey: ["lookupViewConfig", associatedEntityName, lookupViewValue],
+    queryFn: () => getLookupViewConfig(associatedEntityName, primaryIdAttribute, primaryNameAttribute, lookupViewValue),
+    enabled: !!associatedEntityName && !!primaryIdAttribute && !!primaryNameAttribute,
   });
 }
 
@@ -212,6 +221,10 @@ export async function getViewDefinition(
     },
   });
 
+  if (!result.data?.value.length) {
+    return null;
+  }
+
   const layoutjson = result.data.value[0].layoutjson as unknown as string;
   const layout = JSON.parse(layoutjson) as IViewLayout;
   result.data.value[0].layoutjson = layout;
@@ -228,11 +241,10 @@ export async function getDefaultView(entityName: string | undefined, viewName: s
   return defaultView;
 }
 
-export async function getMetadata(
+async function getMetadata(
   currentTable: string | undefined,
   relationshipName: string | undefined,
-  relationship2Name: string | undefined,
-  associatedViewName: string | undefined
+  relationship2Name: string | undefined
 ): Promise<IMetadata> {
   if (typeof currentTable === "undefined" || typeof relationshipName === "undefined")
     return Promise.reject(new Error("Invalid arguments"));
@@ -257,11 +269,10 @@ export async function getMetadata(
   }
 
   try {
-    const [currentEntity, intersectEntity, associatedEntity, associatedView] = await Promise.all([
+    const [currentEntity, intersectEntity, associatedEntity] = await Promise.all([
       getEntityDefinition(currentTable),
       getEntityDefinition(intersectEntityName),
       getEntityDefinition(associatedEntityName),
-      getDefaultView(associatedEntityName, associatedViewName),
     ]);
 
     let currentIntesectAttribute: string;
@@ -291,7 +302,6 @@ export async function getMetadata(
       currentEntity,
       intersectEntity,
       associatedEntity,
-      associatedView,
       currentIntesectAttribute,
       associatedIntesectAttribute,
       currentEntityNavigationPropertyName,
@@ -301,6 +311,151 @@ export async function getMetadata(
     console.log(error);
     throw error;
   }
+}
+
+async function getLookupViewConfig(
+  associatedEntityName: string | undefined,
+  primaryIdAttribute: string | undefined,
+  primaryNameAttribute: string | undefined,
+  lookupViewValue: string | undefined
+) {
+  if (
+    typeof associatedEntityName === "undefined" ||
+    typeof primaryIdAttribute === "undefined" ||
+    typeof primaryNameAttribute === "undefined"
+  ) {
+    throw new Error("Invalid arguments");
+  }
+
+  const lookupViewVal = lookupViewValue?.trim() ?? "";
+  let lookupViewConfig: LookupView | undefined;
+
+  // check if lookupViewValue is a fetchXml
+  if (lookupViewVal.startsWith("<fetch")) {
+    lookupViewConfig = {
+      sourceType: "FetchXml",
+      source: "FetchXml",
+      fetchXml: lookupViewVal,
+      columns: [],
+      isSystemLookupView: false,
+    };
+  }
+  // if lookupViewValue is an ODataUrl
+  else if (lookupViewVal.startsWith("https://") || lookupViewVal.startsWith("/")) {
+    lookupViewConfig = {
+      sourceType: "ODataUrl",
+      source: lookupViewVal,
+      fetchXml: "",
+      columns: [],
+      isSystemLookupView: false,
+    };
+
+    const url =
+      lookupViewVal.startsWith("https://") || lookupViewVal.startsWith("/api")
+        ? lookupViewVal
+        : `/api/data/v${apiVersion}/${lookupViewVal}`;
+
+    try {
+      const { data } = await axios.get<{ value?: unknown }>(url);
+
+      if (typeof data.value === "string") {
+        lookupViewConfig.fetchXml = data.value;
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          throw new Error("Invalid OData URL");
+        }
+      } else {
+        throw new Error("Failed to get data from OData URL");
+      }
+    }
+  } else {
+    if (lookupViewVal) {
+      // get environment variable in Dataverse
+      const environmentVariableValue = await getEnvironmentVariableValue(lookupViewVal);
+      if (environmentVariableValue) {
+        lookupViewConfig = {
+          sourceType: "EnvironmentVariable",
+          source: lookupViewVal,
+          fetchXml: environmentVariableValue,
+          columns: [],
+          isSystemLookupView: false,
+        };
+      }
+    }
+
+    if (!lookupViewConfig) {
+      // environment variable not found
+      // check if lookupViewValue is a view name
+      const viewDef = await getDefaultView(associatedEntityName, lookupViewVal);
+      if (viewDef) {
+        lookupViewConfig = {
+          sourceType: "ViewName",
+          source: lookupViewVal,
+          fetchXml: viewDef.fetchxml,
+          columns: viewDef.layoutjson.Rows[0].Cells.map((c) => c.Name),
+          isSystemLookupView: viewDef.querytype === 64,
+        };
+      }
+    }
+  }
+
+  if (!lookupViewConfig?.fetchXml) {
+    throw new Error("Invalid Lookup View Configuration");
+  }
+
+  // validate fetchXml
+  let fetchXml = lookupViewConfig.fetchXml;
+
+  if (!lookupViewConfig.isSystemLookupView) {
+    // match "{{...}}" pattern in the string
+    const regex = /{{[^}]*}}/g;
+    fetchXml = fetchXml.replace(regex, (match) => {
+      // Remove "[_]" from the matched string
+      return match.replace(/\[_\]/g, "_");
+    });
+  }
+
+  const doc = new DOMParser().parseFromString(fetchXml, "application/xml");
+  if (doc.getElementsByTagName("fetch").length === 0) {
+    throw new Error("Invalid FetchXml");
+  }
+
+  // validate entity name in fetchXml with associatedEntityName
+  const entityEl = doc.getElementsByTagName("entity")[0];
+  const entityName = entityEl.getAttribute("name");
+  if (entityName !== associatedEntityName) {
+    throw new Error("Lookup View entity does not match the associated entity");
+  }
+
+  const attributes = Array.from(doc.getElementsByTagName("attribute"));
+  // extract columns from fetchXml
+  if (lookupViewConfig.sourceType !== "ViewName") {
+    lookupViewConfig.columns = attributes.map((attr) => attr.getAttribute("name") ?? "").filter((attr) => attr !== "");
+  }
+
+  // check if doc has attribute with name equals primaryIdAttribute and primaryNameAttribute
+  const hasPrimaryIdAttribute = attributes.some((attr) => attr.getAttribute("name") === primaryIdAttribute);
+  const hasPrimaryNameAttribute = attributes.some((attr) => attr.getAttribute("name") === primaryNameAttribute);
+
+  if (!hasPrimaryIdAttribute) {
+    const primaryIdAttr = doc.createElement("attribute");
+    primaryIdAttr.setAttribute("name", primaryIdAttribute);
+    entityEl.appendChild(primaryIdAttr);
+  }
+
+  if (!hasPrimaryNameAttribute) {
+    const primaryNameAttr = doc.createElement("attribute");
+    primaryNameAttr.setAttribute("name", primaryNameAttribute);
+    entityEl.appendChild(primaryNameAttr);
+  }
+
+  if (!hasPrimaryIdAttribute || !hasPrimaryNameAttribute) {
+    lookupViewConfig.fetchXml = new XMLSerializer().serializeToString(doc);
+  }
+
+  return lookupViewConfig;
 }
 
 export function retrieveMultiple(
@@ -327,35 +482,52 @@ export function retrieveMultiple(
         .then((res) => res.data.value);
 }
 
-export function retrieveMultipleFetch(
+export async function retrieveMultipleFetch(
   entitySetName: string | undefined,
   fetchXml: string | undefined,
   page?: number,
   count?: number,
   pagingCookies?: string
 ) {
-  if (typeof entitySetName === "undefined" || typeof fetchXml === "undefined")
-    return Promise.reject(new Error("Invalid entity set name or fetchXml"));
-
-  const doc = new DOMParser().parseFromString(fetchXml, "application/xml");
-  doc.documentElement.setAttribute("page", page?.toString() ?? "1");
-  doc.documentElement.setAttribute("count", count?.toString() ?? "50");
-  if (pagingCookies) {
-    doc.documentElement.setAttribute("paging-cookie", pagingCookies);
+  if (typeof entitySetName === "undefined" || typeof fetchXml === "undefined") {
+    throw new Error("Invalid entity set name or fetchXml");
   }
 
-  const newFetchXml = new XMLSerializer().serializeToString(doc);
+  try {
+    const doc = new DOMParser().parseFromString(fetchXml, "application/xml");
+    doc.documentElement.setAttribute("page", page?.toString() ?? "1");
+    doc.documentElement.setAttribute("count", count?.toString() ?? "50");
+    if (pagingCookies) {
+      doc.documentElement.setAttribute("paging-cookie", pagingCookies);
+    }
+    const newFetchXml = new XMLSerializer().serializeToString(doc);
 
-  return axios
-    .get<{ value: ComponentFramework.WebApi.Entity[] }>(`/api/data/v${apiVersion}/${entitySetName}`, {
-      headers: {
-        Prefer: "odata.include-annotations=OData.Community.Display.V1.FormattedValue",
-      },
-      params: {
-        fetchXml: encodeURIComponent(newFetchXml),
-      },
-    })
-    .then((res) => res.data.value);
+    const { data } = await axios.get<{ value: ComponentFramework.WebApi.Entity[] }>(
+      `/api/data/v${apiVersion}/${entitySetName}`,
+      {
+        headers: {
+          Prefer: "odata.include-annotations=OData.Community.Display.V1.FormattedValue",
+        },
+        params: {
+          fetchXml: encodeURIComponent(newFetchXml),
+        },
+      }
+    );
+
+    return data.value ?? [];
+  } catch (error) {
+    // handle serialization error
+    if (error instanceof DOMException || error instanceof TypeError || error instanceof SyntaxError) {
+      throw new Error("Invalid FetchXml");
+    }
+    // handle axios error
+    if (axios.isAxiosError(error)) {
+      if (error.response?.status === 400) {
+        throw new Error("Invalid FetchXml");
+      }
+    }
+    throw new Error("Failed to retrieve data");
+  }
 }
 
 export async function retrieveAssociatedRecords(
@@ -527,4 +699,28 @@ export function getCurrentRecord(attributes?: string[]): ComponentFramework.WebA
       return [attribute.getName(), attribute.getValue()];
     })
   );
+}
+
+async function getEnvironmentVariableValue(environmentVariableName: string) {
+  try {
+    const { data: evDef } = await axios.get<{
+      value: { environmentvariabledefinitionid: string; defaultvalue?: string }[];
+    }>(
+      `/api/data/v${apiVersion}/environmentvariabledefinitions?$filter=schemaname eq '${environmentVariableName}' or displayname eq '${environmentVariableName}' &$select=environmentvariabledefinitionid,defaultvalue&$top=1`
+    );
+
+    // environment variable not found
+    if (evDef.value.length === 0) return null;
+
+    const defaultValue = evDef.value[0].defaultvalue ?? "";
+
+    // get environment variable value
+    const { data: evValue } = await axios.get<{ value: { value: string }[] }>(
+      `/api/data/v${apiVersion}/environmentvariablevalues?$filter=_environmentvariabledefinitionid_value eq '${evDef.value[0].environmentvariabledefinitionid}'&$select=value&$top=1`
+    );
+
+    return evValue?.value.at(0)?.value ?? defaultValue;
+  } catch (error) {
+    return null;
+  }
 }
