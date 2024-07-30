@@ -3,7 +3,7 @@
     "browser": true,
     "es2021": true
   },
-  "extends": ["plugin:@typescript-eslint/recommended", "plugin:react/recommended", "prettier"],
+  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "plugin:react/recommended", "prettier"],
   "globals": {
     "ComponentFramework": true
   },
@@ -15,6 +15,7 @@
   "plugins": ["@microsoft/power-apps", "@typescript-eslint"],
   "rules": {
     "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": "off",
     "no-explicit-any": "off"
   },
   "settings": {

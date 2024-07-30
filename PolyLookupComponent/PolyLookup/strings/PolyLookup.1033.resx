@@ -173,4 +173,12 @@
     <value>Refine search term for more</value>
     <comment>Message shown when there are more records but the suggestion list already full</comment>
   </data>
+  <data name="GenericErrorMessage" xml:space="preserve">
+    <value>Failed to load data</value>
+    <comment>Message shown when an unknown error happens</comment>
+  </data>
+  <data name="InvalidLookupViewMessage" xml:space="preserve">
+    <value>Invalid Lookup View</value>
+    <comment>Message shown when lookup view is not configured correctly</comment>
+  </data>
 </root>

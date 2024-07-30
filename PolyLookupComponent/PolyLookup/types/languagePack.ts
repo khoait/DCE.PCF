@@ -13,4 +13,6 @@ export interface LanguagePack {
   RelationshipNotSupportedMessage: string;
   NoMoreRecordsMessage: string;
   SuggestionListFullMessage: string;
+  GenericErrorMessage: string;
+  InvalidLookupViewMessage: string;
 }

@@ -43,6 +43,8 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
       LoadMoreLabel: context.resources.getString("LoadMoreLabel"),
       NoMoreRecordsMessage: context.resources.getString("NoMoreRecordsMessage"),
       SuggestionListFullMessage: context.resources.getString("SuggestionListFullMessage"),
+      GenericErrorMessage: context.resources.getString("GenericErrorMessage"),
+      InvalidLookupViewMessage: context.resources.getString("InvalidLookupViewMessage"),
     };
   }
 
@@ -57,7 +59,9 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
 
     try {
       clientUrl = context.page.getClientUrl();
-    } catch {}
+    } catch {
+      // ignore error
+    }
 
     const props: PolyLookupProps = {
       currentTable: context.page.entityTypeName,
