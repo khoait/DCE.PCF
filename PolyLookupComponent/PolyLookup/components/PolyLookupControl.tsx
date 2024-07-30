@@ -554,21 +554,21 @@ const Body = ({
           text: {
             minWidth: "0",
             borderColor: "transparent",
-            borderWidth: 1,
-            borderRadius: 1,
+            borderWidth: disabled ? 0 : 1,
+            borderRadius: 0,
             "&:after": {
               backgroundColor: "transparent",
-              borderColor: isFocused ? "#666" : "transparent",
-              borderWidth: 1,
-              borderRadius: 1,
+              borderColor: isFocused && !disabled ? "#666" : "transparent",
+              borderWidth: disabled ? 0 : 1,
+              borderRadius: 0,
             },
-            "&:hover:after": { backgroundColor: disabled ? "rgba(50, 50, 50, 0.1)" : "transparent" },
+            "&:hover:after": { backgroundColor: "transparent" },
           },
         };
         return pickerStyles;
       }}
       pickerSuggestionsProps={pickerSuggestionsProps}
-      disabled={disabled || shouldDisable()}
+      disabled={shouldDisable()}
       onRenderItem={(props: ITagItemProps) => {
         props.styles = {
           close: [disabled && { display: "none" }],
