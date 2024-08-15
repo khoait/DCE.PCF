@@ -15,8 +15,9 @@ import {
 } from "@fluentui/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Handlebars from "handlebars";
-import React from "react";
+import React, { useEffect } from "react";
 import { getCurrentRecord, useFetchXmlData, useLanguagePack, useMetadata } from "../services/DataverseService";
+import { getHandlebarsVariables } from "../services/TemplateHelper";
 import { LanguagePack } from "../types/languagePack";
 
 const queryClient = new QueryClient();
@@ -132,18 +133,26 @@ const Body = ({
     isSuccess: isLoadingMetadataSuccess,
   } = useMetadata(lookupEntity, lookupViewId, showIcon === ShowIconOptions.EntityIcon);
 
-  const templateColumns: string[] = [];
-  if (optionTemplate || selectedItemTemplate) {
-    templateColumns.push(...getHandlebarsVariables(optionTemplate ?? "" + " " + selectedItemTemplate ?? ""));
-  }
-
-  const fetchXml = getFetchTemplateString(metadata?.lookupView.fetchxml ?? "", customFilter, templateColumns);
-
   const {
     data: fetchData,
     isLoading: isLoadingFetchData,
     isSuccess: isLoadingFetchDataSuccess,
-  } = useFetchXmlData(metadata?.lookupEntity.EntitySetName, lookupViewId, fetchXml, customFilter, groupBy);
+  } = useFetchXmlData(
+    metadata?.lookupEntity.EntitySetName,
+    lookupViewId,
+    metadata?.lookupView.fetchxml,
+    customFilter,
+    groupBy,
+    optionTemplate,
+    selectedItemTemplate
+  );
+
+  if (isLoadingFetchDataSuccess) {
+    if (!fetchData.some((d) => d[metadata?.lookupEntity.PrimaryIdAttribute ?? ""] === selectedId)) {
+      // remove selectedId if it's not in the list
+      onChange?.(null);
+    }
+  }
 
   const getDropdownOptions = (): IDropdownOption<ComponentFramework.WebApi.Entity>[] => {
     if (!metadata) return [];
@@ -387,6 +396,18 @@ const Body = ({
     ],
   };
 
+  useEffect(() => {
+    const templateVar = getHandlebarsVariables(metadata?.lookupView.fetchxml ?? "" + customFilter ?? "");
+    if (templateVar.length) {
+      const invalidateFetchDataFn = (context: Xrm.Events.EventContext) => {
+        queryClient.invalidateQueries({ queryKey: ["fetchdata"] });
+      };
+      templateVar.forEach((v) => {
+        Xrm.Page.data.entity.attributes.get(v)?.addOnChange(invalidateFetchDataFn);
+      });
+    }
+  }, [metadata?.lookupView.fetchxml, customFilter]);
+
   return (
     <Stack horizontal styles={{ root: { width: "100%" } }}>
       <Stack.Item grow>
@@ -476,46 +497,6 @@ export default function LookdownControl(props: LookdownProps) {
   );
 }
 
-function getFetchTemplateString(fetchXml: string, customFilter?: string | null, additionalColumns?: string[]) {
-  if (fetchXml === "") return fetchXml;
-
-  if (!customFilter && additionalColumns?.length === 0) return fetchXml;
-
-  let templateString = fetchXml;
-
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(fetchXml, "application/xml");
-  const entity = doc.querySelector("entity");
-
-  if (customFilter) {
-    // create customFilterElement from customFilter
-    const customFilterEl = parser.parseFromString(customFilter, "text/xml");
-    entity?.appendChild(customFilterEl.documentElement);
-  }
-
-  if (additionalColumns?.length) {
-    // get unique list of additionalColumns
-    additionalColumns = [...new Set(additionalColumns)];
-
-    // get all attribute names from fetchXml
-    const attributes = doc.querySelectorAll("attribute");
-    const attributeNames = Array.from(attributes).map((a) => a.getAttribute("name"));
-
-    // get list of strings from additionalColumns not in attributeNames
-    const addColumns = additionalColumns.filter((c) => !attributeNames.includes(c));
-
-    addColumns.forEach((c) => {
-      const attributeEl = parser.parseFromString(`<attribute name='${c}' />`, "text/xml");
-      entity?.appendChild(attributeEl.documentElement);
-    });
-  }
-
-  templateString = new XMLSerializer().serializeToString(doc);
-
-  const fetchXmlTemplate = Handlebars.compile(templateString);
-  return fetchXmlTemplate(getCurrentRecord());
-}
-
 function getCustomFilterString(customFilter: string) {
   if (customFilter === "") return customFilter;
 
@@ -527,23 +508,4 @@ function getCustomFilterString(customFilter: string) {
 
   const filterTemplate = Handlebars.compile(customFilter);
   return filterTemplate(getCurrentRecord());
-}
-
-/**
- * Getting the variables from the Handlebars template.
- * Supports helpers too.
- * @param input
- */
-function getHandlebarsVariables(input: string): string[] {
-  const ast = Handlebars.parseWithoutProcessing(input);
-
-  return ast.body
-    .filter(({ type }: hbs.AST.Statement) => type === "MustacheStatement")
-    .map((statement: hbs.AST.Statement) => {
-      const moustacheStatement: hbs.AST.MustacheStatement = statement as hbs.AST.MustacheStatement;
-      const paramsExpressionList = moustacheStatement.params as hbs.AST.PathExpression[];
-      const pathExpression = moustacheStatement.path as hbs.AST.PathExpression;
-
-      return paramsExpressionList[0]?.original || pathExpression.original;
-    });
 }
