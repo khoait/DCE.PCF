@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
+import Handlebars from "handlebars";
+import { getHandlebarsVariables } from "../services/TemplateHelper";
 import { LanguagePack } from "../types/languagePack";
 import { IEntityDefinition, IMetadata, IViewDefinition, IViewLayout } from "../types/metadata";
 
@@ -38,12 +40,20 @@ export function useFetchXmlData(
   lookupViewId: string | null | undefined,
   fetchXml: string | undefined,
   customFilter?: string | null,
-  groupBy?: string | null
+  groupBy?: string | null,
+  optionTemplate?: string | null,
+  selectedItemTemplate?: string | null
 ) {
+  const templateColumns: string[] = [];
+  if (optionTemplate || selectedItemTemplate) {
+    templateColumns.push(...getHandlebarsVariables(optionTemplate ?? "" + " " + selectedItemTemplate ?? ""));
+  }
+
   return useQuery({
-    queryKey: ["fetchdata", entitySetName, lookupViewId, fetchXml],
+    queryKey: ["fetchdata", entitySetName, lookupViewId],
     queryFn: () => {
-      return retrieveMultipleFetch(entitySetName ?? "", fetchXml ?? "", groupBy);
+      const populatedFetchXml = getFetchTemplateString(fetchXml ?? "", customFilter, templateColumns);
+      return retrieveMultipleFetch(entitySetName ?? "", populatedFetchXml, groupBy);
     },
     enabled: !!entitySetName && !!lookupViewId && !!fetchXml,
   });
@@ -252,4 +262,44 @@ export function getAttributeFormattedValue(entity: ComponentFramework.WebApi.Ent
   }
 
   return formattedValue;
+}
+
+function getFetchTemplateString(fetchXml: string, customFilter?: string | null, additionalColumns?: string[]) {
+  if (fetchXml === "") return fetchXml;
+
+  if (!customFilter && additionalColumns?.length === 0) return fetchXml;
+
+  let templateString = fetchXml;
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(fetchXml, "application/xml");
+  const entity = doc.querySelector("entity");
+
+  if (customFilter) {
+    // create customFilterElement from customFilter
+    const customFilterEl = parser.parseFromString(customFilter, "text/xml");
+    entity?.appendChild(customFilterEl.documentElement);
+  }
+
+  if (additionalColumns?.length) {
+    // get unique list of additionalColumns
+    additionalColumns = [...new Set(additionalColumns)];
+
+    // get all attribute names from fetchXml
+    const attributes = doc.querySelectorAll("attribute");
+    const attributeNames = Array.from(attributes).map((a) => a.getAttribute("name"));
+
+    // get list of strings from additionalColumns not in attributeNames
+    const addColumns = additionalColumns.filter((c) => !attributeNames.includes(c));
+
+    addColumns.forEach((c) => {
+      const attributeEl = parser.parseFromString(`<attribute name='${c}' />`, "text/xml");
+      entity?.appendChild(attributeEl.documentElement);
+    });
+  }
+
+  templateString = new XMLSerializer().serializeToString(doc);
+
+  const fetchXmlTemplate = Handlebars.compile(templateString);
+  return fetchXmlTemplate(getCurrentRecord());
 }
