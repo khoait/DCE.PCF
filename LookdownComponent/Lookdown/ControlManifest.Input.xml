@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DCEPCF" constructor="Lookdown" version="1.2.1" display-name-key="Lookdown v1.2.1" description-key="Display a lookup control as a dropdown" control-type="virtual" >
+  <control namespace="DCEPCF" constructor="Lookdown" version="1.3.0" display-name-key="Lookdown v1.3.0" description-key="Display a lookup control as a dropdown" control-type="virtual" >
     <external-service-usage enabled="false">
       <!--UNCOMMENT TO ADD EXTERNAL DOMAINS
       <domain></domain>
