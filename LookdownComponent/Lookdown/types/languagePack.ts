@@ -4,4 +4,5 @@ export interface LanguagePack {
   OpenRecordLabel: string;
   QuickCreateLabel: string;
   LookupPanelLabel: string;
+  LoadDataErrorMessage: string;
 }

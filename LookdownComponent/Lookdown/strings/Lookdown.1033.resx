@@ -137,4 +137,8 @@
     <value>Lookup panel</value>
     <comment>Label for open lookup panel button</comment>
   </data>
+  <data name="LoadDataErrorMessage" xml:space="preserve">
+    <value>Failed to load data</value>
+    <comment>Message shown when data failed to load</comment>
+  </data>
 </root>
