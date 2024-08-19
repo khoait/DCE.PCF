@@ -1,8 +1,9 @@
 import * as React from "react";
-import PolyLookupControl, { PolyLookupProps, RelationshipTypeEnum, TagAction } from "./components/PolyLookupControl";
+import PolyLookupControl from "./components/PolyLookupControl";
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import { IExtendedContext } from "./types/extendedContext";
 import { LanguagePack } from "./types/languagePack";
+import { PolyLookupProps, RelationshipTypeEnum, TagAction } from "./types/typings";
 
 export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOutputs> {
   private theComponent: ComponentFramework.ReactControl<IInputs, IOutputs>;
@@ -81,6 +82,7 @@ export class PolyLookup implements ComponentFramework.ReactControl<IInputs, IOut
         : undefined,
       defaultLanguagePack: this.languagePack,
       languagePackPath: context.parameters.languagePackPath?.raw ?? undefined,
+      fluentDesign: this.context.fluentDesignLanguage,
       onChange:
         context.parameters.outputSelected?.raw === "1" || context.parameters.outputField?.attributes?.LogicalName
           ? this.onLookupChange
