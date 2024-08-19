@@ -15,8 +15,9 @@
   "plugins": ["@microsoft/power-apps", "@typescript-eslint"],
   "rules": {
     "no-unused-vars": "off",
+    "no-explicit-any": "off",
     "@typescript-eslint/no-unused-vars": "off",
-    "no-explicit-any": "off"
+    "@typescript-eslint/no-explicit-any": "off"
   },
   "settings": {
     "react": {

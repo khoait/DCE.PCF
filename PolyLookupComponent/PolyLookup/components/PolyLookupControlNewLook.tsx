@@ -1,6 +1,6 @@
 import {
   Avatar,
-  Field,
+  FluentProvider,
   Tag,
   TagPicker,
   TagPickerControl,
@@ -32,7 +32,7 @@ export default function PolyLookupControlNewLook(props: PolyLookupProps) {
   const tagPickerOptions = options.filter((option) => !selectedOptions.includes(option));
 
   return (
-    <Field label="Select Employees" style={{ maxWidth: 400 }}>
+    <FluentProvider style={{ width: "100%" }} theme={props.fluentDesign?.tokenTheme}>
       <TagPicker onOptionSelect={onOptionSelect} selectedOptions={selectedOptions}>
         <TagPickerControl>
           <TagPickerGroup>
@@ -64,6 +64,6 @@ export default function PolyLookupControlNewLook(props: PolyLookupProps) {
             : "No options available"}
         </TagPickerList>
       </TagPicker>
-    </Field>
+    </FluentProvider>
   );
 }
