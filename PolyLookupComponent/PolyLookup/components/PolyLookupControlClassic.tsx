@@ -26,7 +26,7 @@ import {
   useSelectedItems,
 } from "../services/DataverseService";
 import { IMetadata } from "../types/metadata";
-import { PolyLookupProps, RelationshipTypeEnum, TagAction } from "../types/typings";
+import { EntityReference, PolyLookupProps, RelationshipTypeEnum, TagAction } from "../types/typings";
 import { SuggestionInfo } from "./SuggestionInfo";
 
 const parser = new DOMParser();
@@ -112,7 +112,7 @@ export default function PolyLookupControlClassic({
   // get selected items
   const {
     data: selectedItems,
-    isInitialLoading: isLoadingSelectedItems,
+    isPending: isLoadingSelectedItems,
     isSuccess: isLoadingSelectedItemsSuccess,
     isError: isErrorSelectedItems,
     error: errorSelectedItems,
@@ -122,10 +122,10 @@ export default function PolyLookupControlClassic({
     onChange(
       selectedItems?.map((i) => {
         return {
-          id: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""],
-          name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""],
+          id: i.associatedId,
+          name: i.associatedName,
           etn: metadata?.associatedEntity.LogicalName ?? "",
-        } as ComponentFramework.EntityReference;
+        } as EntityReference;
       })
     );
     if (!initialOutputSynced) {
@@ -227,7 +227,9 @@ export default function PolyLookupControlClassic({
       return Promise.reject(languagePack.RelationshipNotSupportedMessage);
     },
     onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries(["selectedItems"]);
+      queryClient.invalidateQueries({
+        queryKey: ["selectedItems"],
+      });
     },
   });
 
@@ -245,7 +247,9 @@ export default function PolyLookupControlClassic({
       return Promise.reject(languagePack.RelationshipNotSupportedMessage);
     },
     onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries(["selectedItems"]);
+      queryClient.invalidateQueries({
+        queryKey: ["selectedItems"],
+      });
     },
   });
 
@@ -333,7 +337,7 @@ export default function PolyLookupControlClassic({
             id: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""],
             name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""],
             etn: metadata?.associatedEntity.LogicalName ?? "",
-          } as ComponentFramework.EntityReference;
+          } as EntityReference;
         })
       );
     } else if (formType === XrmEnum.FormType.Update) {
@@ -342,25 +346,16 @@ export default function PolyLookupControlClassic({
           (i) =>
             !selectedTags?.some((t) => {
               const data = (t as ITagWithData).data;
-              return (
-                data[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ===
-                i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
-              );
+              return data[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] === i.associatedId;
             })
         )
-        .map((i) =>
-          relationshipType === RelationshipTypeEnum.ManyToMany
-            ? i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
-            : i[metadata?.intersectEntity.PrimaryIdAttribute ?? ""]
-        );
+        .map((i) => (relationshipType === RelationshipTypeEnum.ManyToMany ? i.associatedId : i.id));
 
       const added = selectedTags
         ?.filter((t) => {
           const data = (t as ITagWithData).data;
           return !selectedItems?.some(
-            (i) =>
-              i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ===
-              data[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
+            (i) => i.associatedId === data[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
           );
         })
         .map((t) => t.key);
@@ -436,7 +431,9 @@ export default function PolyLookupControlClassic({
     );
 
     if (tagAction === TagAction.OpenDialog || tagAction === TagAction.OpenDialogIntersect) {
-      queryClient.invalidateQueries(["selectedItems"]);
+      queryClient.invalidateQueries({
+        queryKey: ["selectedItems"],
+      });
     }
   };
 

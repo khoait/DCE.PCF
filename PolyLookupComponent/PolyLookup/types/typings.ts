@@ -17,7 +17,7 @@ export interface PolyLookupProps {
   defaultLanguagePack: LanguagePack;
   languagePackPath?: string;
   fluentDesign?: ComponentFramework.FluentDesignState;
-  onChange?: (selectedItems: ComponentFramework.EntityReference[] | undefined) => void;
+  onChange?: (selectedItems: EntityReference[] | undefined) => void;
   onQuickCreate?: (
     entityName: string | undefined,
     primaryAttribute: string | undefined,
@@ -38,4 +38,23 @@ export enum TagAction {
   OpenDialog = 2,
   OpenInlineIntersect = 3,
   OpenDialogIntersect = 4,
+}
+
+export interface EntityOption {
+  id: string; // if relationship type is Many to Many, use associated id, otherwise use intersect id
+  intersectId: string;
+  associatedId: string;
+  associatedName: string;
+  optionText: string;
+  selectedOptionText: string;
+  iconSrc?: string;
+  iconSize?: number;
+  group?: string;
+  entity: ComponentFramework.WebApi.Entity;
+}
+
+export interface EntityReference {
+  etn: string;
+  id: string;
+  name: string;
 }

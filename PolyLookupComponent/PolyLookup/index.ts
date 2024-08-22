@@ -4,7 +4,7 @@ import PolyLookupControl from "./components/PolyLookupControl";
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import { IExtendedContext } from "./types/extendedContext";
 import { LanguagePack } from "./types/languagePack";
-import { PolyLookupProps, RelationshipTypeEnum, TagAction } from "./types/typings";
+import { EntityReference, PolyLookupProps, RelationshipTypeEnum, TagAction } from "./types/typings";
 export class PolyLookup implements ComponentFramework.StandardControl<IInputs, IOutputs> {
   private container: HTMLDivElement;
   private root: Root;
@@ -129,7 +129,7 @@ export class PolyLookup implements ComponentFramework.StandardControl<IInputs, I
     this.root.render(React.createElement(PolyLookupControl, props));
   }
 
-  public onLookupChange = (selectedItems: ComponentFramework.EntityReference[] | undefined) => {
+  public onLookupChange = (selectedItems: EntityReference[] | undefined) => {
     if (this.context.parameters.outputSelected.raw === "1") {
       this.output = selectedItems?.map((item) => item.name).join(", ");
     }
