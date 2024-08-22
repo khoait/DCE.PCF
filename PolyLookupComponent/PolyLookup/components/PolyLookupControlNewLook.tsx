@@ -16,7 +16,7 @@ import {
   tokens,
 } from "@fluentui/react-components";
 import { useQueryClient } from "@tanstack/react-query";
-import React from "react";
+import React, { useState } from "react";
 import {
   useAssociateQuery,
   useDisassociateQuery,
@@ -26,7 +26,7 @@ import {
   useMetadata,
   useSelectedItems,
 } from "../services/DataverseService";
-import { PolyLookupProps, RelationshipTypeEnum } from "../types/typings";
+import { EntityReference, PolyLookupProps, RelationshipTypeEnum } from "../types/typings";
 
 const useStyle = makeStyles({
   tagGroup: {
@@ -60,7 +60,10 @@ export default function PolyLookupControlNewLook({
   const queryClient = useQueryClient();
   const { tagGroup } = useStyle();
 
-  const [searchText, setSearchText] = React.useState<string>("");
+  const [searchText, setSearchText] = useState<string>("");
+
+  const [initialOutputSynced, setInitialOutputSynced] = useState(false);
+  const [selectedCount, setSelectedCount] = useState(0);
 
   const { data: loadedLanguagePack } = useLanguagePack(languagePackPath, defaultLanguagePack);
 
@@ -119,6 +122,22 @@ export default function PolyLookupControlNewLook({
   );
 
   const { mutate: disassociateQuery } = useDisassociateQuery(metadata, currentRecordId, relationshipType, languagePack);
+
+  if ((!initialOutputSynced || selectedCount !== selectedItems?.length) && isLoadingSelectedItemsSuccess && onChange) {
+    onChange(
+      selectedItems?.map((i) => {
+        return {
+          id: i.associatedId,
+          name: i.associatedName,
+          etn: metadata?.associatedEntity.LogicalName ?? "",
+        } as EntityReference;
+      })
+    );
+    if (!initialOutputSynced) {
+      setInitialOutputSynced(true);
+    }
+    setSelectedCount(selectedItems?.length ?? 0);
+  }
 
   const handleOnOptionSelect: TagPickerProps["onOptionSelect"] = (_e, { value }) => {
     if (itemLimit && (selectedItems?.length ?? 0) >= itemLimit) {
