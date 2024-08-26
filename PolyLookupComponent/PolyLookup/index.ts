@@ -130,18 +130,28 @@ export class PolyLookup implements ComponentFramework.StandardControl<IInputs, I
   }
 
   public onLookupChange = (selectedItems: EntityReference[] | undefined) => {
+    let shouldNotify = false;
     if (this.context.parameters.outputSelected.raw === "1") {
-      this.output = selectedItems?.map((item) => item.name).join(", ");
+      const output = selectedItems?.map((item) => item.name).join(", ");
+      if (output !== this.output) {
+        shouldNotify = true;
+      }
+      this.output = output;
     }
 
     if (this.context.parameters.outputField.attributes) {
-      if (!selectedItems?.length) {
-        this.outputSelectedItems = "";
-      } else {
-        this.outputSelectedItems = JSON.stringify(selectedItems);
+      let outputSelectedItems = "";
+      if (selectedItems?.length) {
+        outputSelectedItems = JSON.stringify(selectedItems);
       }
+      if (outputSelectedItems !== this.outputSelectedItems) {
+        shouldNotify = true;
+      }
+      this.outputSelectedItems = outputSelectedItems;
     }
-    this.notifyOutputChanged();
+    if (shouldNotify) {
+      this.notifyOutputChanged();
+    }
   };
 
   public onQuickCreate = async (

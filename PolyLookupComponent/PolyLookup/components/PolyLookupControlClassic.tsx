@@ -11,7 +11,7 @@ import {
 } from "@fluentui/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Handlebars from "handlebars";
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sprintf } from "sprintf-js";
 import {
   associateRecord,
@@ -57,8 +57,6 @@ export default function PolyLookupControlClassic({
 }: PolyLookupProps) {
   const queryClient = useQueryClient();
   const [selectedItemsCreate, setSelectedItemsCreate] = useState<ComponentFramework.WebApi.Entity[]>([]);
-  const [initialOutputSynced, setInitialOutputSynced] = useState(false);
-  const [selectedCount, setSelectedCount] = useState(0);
 
   const pickerRef = useRef<TagPickerBase>(null);
 
@@ -113,12 +111,15 @@ export default function PolyLookupControlClassic({
   const {
     data: selectedItems,
     isPending: isLoadingSelectedItems,
+    isFetching: isFetchingSelectedItems,
     isSuccess: isLoadingSelectedItemsSuccess,
     isError: isErrorSelectedItems,
     error: errorSelectedItems,
   } = useSelectedItems(metadata, currentRecordId, formType);
 
-  if ((!initialOutputSynced || selectedCount !== selectedItems?.length) && isLoadingSelectedItemsSuccess && onChange) {
+  useEffect(() => {
+    if (isFetchingSelectedItems || !isLoadingSelectedItemsSuccess || !onChange) return;
+
     onChange(
       selectedItems?.map((i) => {
         return {
@@ -128,11 +129,7 @@ export default function PolyLookupControlClassic({
         } as EntityReference;
       })
     );
-    if (!initialOutputSynced) {
-      setInitialOutputSynced(true);
-    }
-    setSelectedCount(selectedItems?.length ?? 0);
-  }
+  }, [isFetchingSelectedItems, isLoadingSelectedItemsSuccess, onChange]);
 
   // filter query
   const filterQuery = useMutation({

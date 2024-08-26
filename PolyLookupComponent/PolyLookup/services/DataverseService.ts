@@ -494,7 +494,7 @@ async function getLookupViewConfig(
   primaryIdAttribute: string | undefined,
   primaryNameAttribute: string | undefined,
   lookupViewValue: string | undefined
-) {
+): Promise<LookupView> {
   if (
     typeof associatedEntityName === "undefined" ||
     typeof primaryIdAttribute === "undefined" ||
