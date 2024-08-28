@@ -13,6 +13,7 @@ export interface PolyLookupProps {
   disabled?: boolean;
   formType?: XrmEnum.FormType;
   outputSelectedItems?: boolean;
+  showIcon?: ShowIconOptions;
   tagAction?: TagAction;
   defaultLanguagePack: LanguagePack;
   languagePackPath?: string;
@@ -48,7 +49,6 @@ export interface EntityOption {
   optionText: string;
   selectedOptionText: string;
   iconSrc?: string;
-  iconSize?: number;
   group?: string;
   entity: ComponentFramework.WebApi.Entity;
 }
@@ -57,4 +57,10 @@ export interface EntityReference {
   etn: string;
   id: string;
   name: string;
+}
+
+export enum ShowIconOptions {
+  None = 0,
+  EntityIcon = 1,
+  RecordImage = 2,
 }

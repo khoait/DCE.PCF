@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DCEPCF" constructor="PolyLookup" version="1.5.2" display-name-key="PolyLookup v1.5.2" description-key="Multi-select lookup supporting different type of many-to-many relationships" control-type="standard" >
+  <control namespace="DCEPCF" constructor="PolyLookup" version="1.5.3" display-name-key="PolyLookup v1.5.3" description-key="Multi-select lookup supporting different type of many-to-many relationships" control-type="standard" >
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
     Example1:
@@ -33,6 +33,11 @@
     <property name="outputField" display-name-key="Output Selected Field" description-key="The field to output the selected records as a JSON array. Can be the same as bound field" of-type-group="text" usage="bound" required="false" />
     <property name="lookupView" display-name-key="Lookup View" description-key="Lookup View configuration. Value can be a static text or bound to a field on the form, the value can be: 1 - a FetchXML, 2 - a OData URL to a column of a record containing a FetchXML, 3 - An environment variable logical name containing a FetchXML, 4 - System View name" of-type-group="text" usage="input" required="false" />        
     <property name="itemLimit" display-name-key="Item Limit" description-key="Maximum number of selected items" of-type="Whole.None" usage="input" required="false" />
+     <property name="showIcon" display-name-key="Show Icon" description-key="Whether to show an icon in option item. Default: None." of-type="Enum" usage="input" required="false" default-value="0" >
+      <value name="none" display-name-key="None">0</value>
+      <value name="entityIcon" display-name-key="Use Entity Icon">1</value>
+      <value name="recordImage" display-name-key="Use Record Image">2</value>
+    </property>
     <property name="allowQuickCreate" display-name-key="Allow Quick Create" description-key="Enable/disable the create button to quickly create a new option" of-type="Enum" usage="input" required="false" default-value="0" >
       <value name="false" display-name-key="No">0</value>
       <value name="true" display-name-key="Yes">1</value>

@@ -110,12 +110,6 @@ export function useEntityOptions(
     [lookupViewConfig?.fetchXml]
   );
 
-  const entityIcon = `/WebResources/${
-    metadata?.associatedEntity.IconVectorName ??
-    metadata?.associatedEntity.IconMediumName ??
-    metadata?.associatedEntity.IconSmallName
-  }`;
-
   return useQuery({
     queryKey: ["entityOptions", lookupViewConfig, searchText],
     queryFn: async () => {
@@ -184,18 +178,11 @@ export function useEntityOptions(
 
       const records = await retrieveMultipleFetch(metadata.associatedEntity.EntitySetName, fetchXml, 1, pageSize);
       return records.map((r) => {
-        const recordImgUrl = metadata.associatedEntity.PrimaryImageAttribute
-          ? `/api/data/v${apiVersion}/${metadata.associatedEntity.EntitySetName}({{${
+        const iconSrc = metadata.associatedEntity.PrimaryImageAttribute
+          ? `/api/data/v${apiVersion}/${metadata.associatedEntity.EntitySetName}(${
               r[metadata.associatedEntity.PrimaryIdAttribute]
-            }}})/${metadata.associatedEntity.PrimaryImageAttribute}/$value`
+            })/${metadata.associatedEntity.PrimaryImageAttribute}/$value`
           : "";
-
-        let iconSrc = entityIcon;
-        checkImage(recordImgUrl).then((res) => {
-          if (res) {
-            iconSrc = recordImgUrl;
-          }
-        });
 
         return {
           id: r[metadata.associatedEntity.PrimaryIdAttribute],
@@ -372,11 +359,15 @@ export function getEntityDefinition(entityName: string | undefined) {
             $select: tableDefinitionColumns.join(","),
           },
         })
-        .then((res) => {
+        .then(({ data }) => {
+          const entityIconName = data.IconVectorName ?? data.IconMediumName ?? data.IconSmallName;
+          const EntityIconUrl = entityIconName ? `/WebResources/${entityIconName}` : "";
+
           return {
-            ...res.data,
-            DisplayNameLocalized: res.data.DisplayName.UserLocalizedLabel?.Label ?? "",
-            DisplayCollectionNameLocalized: res.data.DisplayCollectionName.UserLocalizedLabel?.Label ?? "",
+            ...data,
+            DisplayNameLocalized: data.DisplayName.UserLocalizedLabel?.Label ?? "",
+            DisplayCollectionNameLocalized: data.DisplayCollectionName.UserLocalizedLabel?.Label ?? "",
+            EntityIconUrl,
           } as IEntityDefinition;
         });
 }
@@ -729,10 +720,6 @@ export async function retrieveAssociatedRecords(
     </entity>
   </fetch>`;
 
-  const entityIconName =
-    associatedEntity.IconVectorName ?? associatedEntity.IconMediumName ?? associatedEntity.IconSmallName;
-  const entityIconUrl = entityIconName ? `/WebResources/${entityIconName}` : "";
-
   const results = await retrieveMultipleFetch(intersectEntity.EntitySetName, fetchXml);
   return results.map((r) => {
     const intersectId = r[intersectEntity.PrimaryIdAttribute];
@@ -743,17 +730,9 @@ export async function retrieveAssociatedRecords(
       [associatedEntity.PrimaryNameAttribute]: associatedName,
     } as ComponentFramework.WebApi.Entity;
 
-    let iconSrc = entityIconUrl;
-    if (associatedEntity.PrimaryImageAttribute) {
-      const recordImgUrl = `/api/data/v${apiVersion}/${associatedEntity.EntitySetName}({{${
-        r[associatedEntity.PrimaryIdAttribute]
-      }}})/${associatedEntity.PrimaryImageAttribute}/$value`;
-      checkImage(recordImgUrl).then((res) => {
-        if (res) {
-          iconSrc = recordImgUrl;
-        }
-      });
-    }
+    const iconSrc = associatedEntity.PrimaryImageAttribute
+      ? `/api/data/v${apiVersion}/${associatedEntity.EntitySetName}(${associatedId})/${associatedEntity.PrimaryImageAttribute}/$value`
+      : "";
 
     return {
       id: relationship1.RelationshipType === "ManyToManyRelationship" ? associatedId : intersectId,

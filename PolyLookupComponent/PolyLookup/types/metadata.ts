@@ -45,6 +45,7 @@ export interface IEntityDefinition {
   IconSmallName: string;
   IconMediumName: string;
   PrimaryImageAttribute: string;
+  EntityIconUrl?: string;
 }
 
 interface IViewRow {

@@ -28,7 +28,14 @@ import {
   useMetadata,
   useSelectedItems,
 } from "../services/DataverseService";
-import { EntityOption, EntityReference, PolyLookupProps, RelationshipTypeEnum, TagAction } from "../types/typings";
+import {
+  EntityOption,
+  EntityReference,
+  PolyLookupProps,
+  RelationshipTypeEnum,
+  ShowIconOptions,
+  TagAction,
+} from "../types/typings";
 import { sprintf } from "sprintf-js";
 
 const useStyle = makeStyles({
@@ -53,6 +60,7 @@ export default function PolyLookupControlNewLook({
   disabled,
   formType,
   outputSelectedItems,
+  showIcon,
   tagAction,
   defaultLanguagePack,
   languagePackPath,
@@ -312,7 +320,7 @@ export default function PolyLookupControlNewLook({
       >
         <TagPickerControl
           secondaryAction={
-            onQuickCreate && !entityOptions?.length ? (
+            onQuickCreate && !entityOptions?.length && !isDataLoading ? (
               <Button appearance="transparent" size="small" shape="rounded" onClick={handleQuickCreate}>
                 {languagePack.AddNewLabel}
               </Button>
@@ -329,12 +337,20 @@ export default function PolyLookupControlNewLook({
                     <InteractionTagPrimary
                       hasSecondaryAction={!disabled}
                       media={
-                        <Avatar
-                          name={i.associatedName}
-                          image={{ src: i.iconSrc }}
-                          color={i.iconSrc?.startsWith("/WebResource") ? "neutral" : "colorful"}
-                          aria-hidden
-                        />
+                        showIcon ? (
+                          <Avatar
+                            size={showIcon === ShowIconOptions.EntityIcon ? 16 : 28}
+                            name={i.associatedName}
+                            image={{
+                              src:
+                                showIcon === ShowIconOptions.EntityIcon
+                                  ? metadata?.associatedEntity.EntityIconUrl
+                                  : i.iconSrc,
+                            }}
+                            color={showIcon === ShowIconOptions.EntityIcon ? "neutral" : "colorful"}
+                            aria-hidden
+                          />
+                        ) : undefined
                       }
                       onClick={() => handleOnItemClick(i)}
                     >
@@ -354,10 +370,16 @@ export default function PolyLookupControlNewLook({
                 <TagPickerOption
                   media={
                     <Avatar
+                      size={showIcon === ShowIconOptions.EntityIcon ? 16 : 28}
                       shape="square"
                       name={option.associatedName}
-                      image={{ src: option.iconSrc }}
-                      color={option.iconSrc?.startsWith("/WebResource") ? "neutral" : "colorful"}
+                      image={{
+                        src:
+                          showIcon === ShowIconOptions.EntityIcon
+                            ? metadata?.associatedEntity.EntityIconUrl
+                            : option.iconSrc,
+                      }}
+                      color={showIcon === ShowIconOptions.EntityIcon ? "neutral" : "colorful"}
                       aria-hidden
                     />
                   }
