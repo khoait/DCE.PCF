@@ -124,6 +124,7 @@ export default function PolyLookupControlNewLook({
   const {
     data: entityOptions,
     isPending: isLoadingEntityOptions,
+    isFetching: isFetchingEntityOptions,
     isSuccess: isSuccessEntityOptions,
     isError: isErrorEntityOptions,
     error: errorEntityOptions,
@@ -312,7 +313,7 @@ export default function PolyLookupControlNewLook({
       >
         <TagPickerControl
           secondaryAction={
-            onQuickCreate && !entityOptions?.length && !isDataLoading ? (
+            onQuickCreate && !entityOptions?.length && !isFetchingEntityOptions ? (
               <Button appearance="transparent" size="small" shape="rounded" onClick={handleQuickCreate}>
                 {languagePack.AddNewLabel}
               </Button>
