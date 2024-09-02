@@ -2,38 +2,43 @@ import {
   ActionButton,
   IBasePickerStyles,
   IBasePickerSuggestionsProps,
+  ImageFit,
   ITag,
   ITagItemProps,
+  Persona,
+  PersonaSize,
   TagItem,
   TagPicker,
   TagPickerBase,
   ValidationState,
 } from "@fluentui/react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import Handlebars from "handlebars";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sprintf } from "sprintf-js";
 import {
-  associateRecord,
-  createRecord,
-  deleteRecord,
-  disassociateRecord,
-  getCurrentRecord,
-  retrieveMultipleFetch,
+  useAssociateQuery,
+  useDisassociateQuery,
+  useFilterQuery,
   useLanguagePack,
   useLookupViewConfig,
   useMetadata,
   useSelectedItems,
 } from "../services/DataverseService";
 import { IMetadata } from "../types/metadata";
-import { EntityReference, PolyLookupProps, RelationshipTypeEnum, TagAction } from "../types/typings";
+import {
+  EntityOption,
+  EntityReference,
+  PolyLookupProps,
+  RelationshipTypeEnum,
+  ShowIconOptions,
+  TagAction,
+} from "../types/typings";
 import { SuggestionInfo } from "./SuggestionInfo";
-
-const parser = new DOMParser();
-const serializer = new XMLSerializer();
+import { Avatar } from "@fluentui/react-components";
 
 interface ITagWithData extends ITag {
-  data: ComponentFramework.WebApi.Entity;
+  data: EntityOption;
 }
 
 export default function PolyLookupControlClassic({
@@ -49,6 +54,7 @@ export default function PolyLookupControlClassic({
   disabled,
   formType,
   outputSelectedItems,
+  showIcon,
   tagAction,
   defaultLanguagePack,
   languagePackPath,
@@ -56,7 +62,7 @@ export default function PolyLookupControlClassic({
   onQuickCreate,
 }: PolyLookupProps) {
   const queryClient = useQueryClient();
-  const [selectedItemsCreate, setSelectedItemsCreate] = useState<ComponentFramework.WebApi.Entity[]>([]);
+  const [selectedItemsCreate, setSelectedItemsCreate] = useState<EntityOption[]>([]);
 
   const pickerRef = useRef<TagPickerBase>(null);
 
@@ -131,129 +137,22 @@ export default function PolyLookupControlClassic({
     );
   }, [isFetchingSelectedItems, isLoadingSelectedItemsSuccess, onChange]);
 
-  // filter query
-  const filterQuery = useMutation({
-    mutationFn: ({ searchText, pageSizeParam }: { searchText: string; pageSizeParam: number | undefined }) => {
-      let fetchXml = lookupViewConfig?.fetchXml ?? "";
+  const { mutateAsync: filterQueryAsync } = useFilterQuery(metadata, lookupViewConfig);
 
-      let shouldDefaultSearch = false;
-      if (!lookupView && lookupViewConfig?.isSystemLookupView) {
-        shouldDefaultSearch = true;
-      } else {
-        if (
-          !fetchXml.includes("{{PolyLookupSearch}}") &&
-          !fetchXml.includes("{{ PolyLookupSearch}}") &&
-          !fetchXml.includes("{{PolyLookupSearch }}") &&
-          !fetchXml.includes("{{ PolyLookupSearch }}")
-        ) {
-          shouldDefaultSearch = true;
-        }
+  const { mutate: associateQuery } = useAssociateQuery(
+    metadata,
+    currentRecordId,
+    relationshipType,
+    clientUrl,
+    languagePack
+  );
 
-        const currentRecord = getCurrentRecord();
-        fetchXml =
-          fetchXmlTemplateFn?.({
-            ...currentRecord,
-            PolyLookupSearch: searchText,
-          }) ?? fetchXml;
-      }
-
-      if (shouldDefaultSearch) {
-        // if lookup view is not specified and using default lookup fiew,
-        // add filter condition to fetchxml to support search
-        const doc = parser.parseFromString(fetchXml, "application/xml");
-        const entities = doc.documentElement.getElementsByTagName("entity");
-        for (let i = 0; i < entities.length; i++) {
-          const entity = entities[i];
-          if (entity.getAttribute("name") === metadata?.associatedEntity.LogicalName) {
-            const filter = doc.createElement("filter");
-            const condition = doc.createElement("condition");
-            condition.setAttribute("attribute", metadata?.associatedEntity.PrimaryNameAttribute ?? "");
-            if (searchText.includes("*")) {
-              const beginsWithWildCard = searchText.startsWith("*") ? true : false;
-              const endsWithWildCard = searchText.endsWith("*") ? true : false;
-              if (beginsWithWildCard || endsWithWildCard) {
-                if (beginsWithWildCard) {
-                  searchText = searchText.replace("*", "");
-                }
-                if (endsWithWildCard) {
-                  searchText = searchText.substring(0, searchText.length - 1);
-                }
-                searchText = "%" + searchText + "%";
-              } else {
-                searchText = searchText + "%";
-              }
-              searchText = searchText.split("*").join("%");
-              condition.setAttribute("operator", "like");
-              condition.setAttribute("value", `${searchText}`);
-            } else {
-              condition.setAttribute("operator", "begins-with");
-              condition.setAttribute("value", `${searchText}`);
-            }
-            filter.appendChild(condition);
-            entity.appendChild(filter);
-          }
-        }
-        fetchXml = serializer.serializeToString(doc);
-      }
-
-      return retrieveMultipleFetch(metadata?.associatedEntity.EntitySetName, fetchXml, 1, pageSizeParam);
-    },
-  });
-
-  // associate query
-  const associateQuery = useMutation({
-    mutationFn: (id: string) => {
-      if (relationshipType === RelationshipTypeEnum.ManyToMany) {
-        return associateRecord(
-          metadata?.currentEntity.EntitySetName,
-          currentRecordId,
-          metadata?.associatedEntity?.EntitySetName,
-          id,
-          relationshipName,
-          clientUrl
-        );
-      } else if (
-        relationshipType === RelationshipTypeEnum.Custom ||
-        relationshipType === RelationshipTypeEnum.Connection
-      ) {
-        return createRecord(metadata?.intersectEntity.EntitySetName, {
-          [`${metadata?.currentEntityNavigationPropertyName}@odata.bind`]: `/${metadata?.currentEntity.EntitySetName}(${currentRecordId})`,
-          [`${metadata?.associatedEntityNavigationPropertyName}@odata.bind`]: `/${metadata?.associatedEntity.EntitySetName}(${id})`,
-        });
-      }
-      return Promise.reject(languagePack.RelationshipNotSupportedMessage);
-    },
-    onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries({
-        queryKey: ["selectedItems"],
-      });
-    },
-  });
-
-  // disassociate query
-  const disassociateQuery = useMutation({
-    mutationFn: (id: string) => {
-      if (relationshipType === RelationshipTypeEnum.ManyToMany) {
-        return disassociateRecord(metadata?.currentEntity?.EntitySetName, currentRecordId, relationshipName, id);
-      } else if (
-        relationshipType === RelationshipTypeEnum.Custom ||
-        relationshipType === RelationshipTypeEnum.Connection
-      ) {
-        return deleteRecord(metadata?.intersectEntity.EntitySetName, id);
-      }
-      return Promise.reject(languagePack.RelationshipNotSupportedMessage);
-    },
-    onSuccess: (data, variables, context) => {
-      queryClient.invalidateQueries({
-        queryKey: ["selectedItems"],
-      });
-    },
-  });
+  const { mutate: disassociateQuery } = useDisassociateQuery(metadata, currentRecordId, relationshipType, languagePack);
 
   const filterSuggestions = useCallback(
     async (filterText: string, selectedTag?: ITag[]): Promise<ITag[]> => {
       try {
-        const results = await filterQuery.mutateAsync({ searchText: filterText, pageSizeParam: pageSize });
+        const results = await filterQueryAsync({ searchText: filterText, pageSizeParam: pageSize });
         return getSuggestionTags(results, metadata);
       } catch {
         // ignore error and return empty array
@@ -266,7 +165,7 @@ export default function PolyLookupControlClassic({
   const showMoreSuggestions = useCallback(
     async (filterText: string, selectedTag?: ITag[]): Promise<ITag[]> => {
       try {
-        const results = await filterQuery.mutateAsync({
+        const results = await filterQueryAsync({
           searchText: filterText,
           pageSizeParam: (pageSize ?? 50) * 2 + 1,
         });
@@ -282,7 +181,7 @@ export default function PolyLookupControlClassic({
   const showAllSuggestions = useCallback(
     async (selectedTags?: ITag[]): Promise<ITag[]> => {
       try {
-        const results = await filterQuery.mutateAsync({ searchText: "", pageSizeParam: pageSize });
+        const results = await filterQueryAsync({ searchText: "", pageSizeParam: pageSize });
         return getSuggestionTags(results, metadata);
       } catch {
         // ignore error and return empty array
@@ -298,32 +197,18 @@ export default function PolyLookupControlClassic({
         (i) =>
           !selectedTags?.some((t) => {
             const data = (t as ITagWithData).data;
-            return (
-              data[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ===
-              i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
-            );
+            return data.associatedId === i.associatedId;
           })
       );
 
       const added = selectedTags
         ?.filter((t) => {
           const data = (t as ITagWithData).data;
-          return !selectedItemsCreate?.some(
-            (i) =>
-              i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ===
-              data[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
-          );
+          return !selectedItemsCreate?.some((i) => i.associatedId === data.associatedId);
         })
         .map((t) => (t as ITagWithData).data);
 
-      const oldRemoved = selectedItemsCreate?.filter(
-        (o) =>
-          !removed?.some(
-            (r) =>
-              r[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ===
-              o[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
-          )
-      );
+      const oldRemoved = selectedItemsCreate?.filter((o) => !removed?.some((r) => r.associatedId === o.associatedId));
 
       const newSelectedItems = [...oldRemoved, ...(added ?? [])];
       setSelectedItemsCreate(newSelectedItems);
@@ -331,8 +216,8 @@ export default function PolyLookupControlClassic({
       onChange?.(
         newSelectedItems?.map((i) => {
           return {
-            id: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""],
-            name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""],
+            id: i.associatedId,
+            name: i.associatedName,
             etn: metadata?.associatedEntity.LogicalName ?? "",
           } as EntityReference;
         })
@@ -343,7 +228,7 @@ export default function PolyLookupControlClassic({
           (i) =>
             !selectedTags?.some((t) => {
               const data = (t as ITagWithData).data;
-              return data[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] === i.associatedId;
+              return data.associatedId === i.associatedId;
             })
         )
         .map((i) => (relationshipType === RelationshipTypeEnum.ManyToMany ? i.associatedId : i.id));
@@ -351,14 +236,12 @@ export default function PolyLookupControlClassic({
       const added = selectedTags
         ?.filter((t) => {
           const data = (t as ITagWithData).data;
-          return !selectedItems?.some(
-            (i) => i.associatedId === data[metadata?.associatedEntity.PrimaryIdAttribute ?? ""]
-          );
+          return !selectedItems?.some((i) => i.associatedId === data.associatedId);
         })
         .map((t) => t.key);
 
-      removed?.forEach((id) => disassociateQuery.mutate(id as string));
-      added?.forEach((id) => associateQuery.mutate(id as string));
+      removed?.forEach((id) => disassociateQuery(id as string));
+      added?.forEach((id) => associateQuery(id as string));
     }
   };
 
@@ -389,7 +272,7 @@ export default function PolyLookupControlClassic({
       )
         .then((result) => {
           if (result) {
-            associateQuery.mutate(result);
+            associateQuery(result);
             // TODO: fix this hack
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
             // @ts-ignore
@@ -415,7 +298,7 @@ export default function PolyLookupControlClassic({
       (tagAction === TagAction.OpenDialogIntersect || tagAction === TagAction.OpenInlineIntersect)
     ) {
       targetEntity = metadata.intersectEntity.LogicalName;
-      targetId = item.data[metadata?.intersectEntity.PrimaryIdAttribute];
+      targetId = item.data.intersectId;
     }
 
     await Xrm.Navigation.navigateTo(
@@ -527,14 +410,23 @@ export default function PolyLookupControlClassic({
       onRenderItem={(props: ITagItemProps) => {
         props.styles = {
           close: [disabled && { display: "none" }],
+          text: [
+            {
+              flex: 1,
+              margin: 0,
+            },
+          ],
           root: [
+            {
+              gap: "4px",
+            },
             !!tagAction && {
-              "&:focus-within button": {
-                color: "#fff",
-              },
-              "&:focus-within:hover button": {
-                color: "#fff",
-              },
+              // "&:focus-within button": {
+              //   color: "#fff",
+              // },
+              // "&:focus-within:hover button": {
+              //   color: "#fff",
+              // },
               "&:focus-within .ms-TagItem-close:hover": {
                 color: "#fff",
                 backgroundColor: "#005a9e",
@@ -543,12 +435,61 @@ export default function PolyLookupControlClassic({
           ],
         };
 
+        const item = props.item as ITagWithData;
+        const iconSize = showIcon === ShowIconOptions.RecordImage ? 24 : 16;
+
         return (
           <TagItem {...props}>
             {tagAction ? (
               <ActionButton
-                styles={{ root: { height: "100%" } }}
-                onClick={() => onTagClick(props.item as ITagWithData)}
+                styles={{
+                  root: { display: "block", width: "100%", height: "100%", padding: 0 },
+                  flexContainer: { gap: 4 },
+                  icon: {
+                    marginLeft: "4px",
+                  },
+                }}
+                iconProps={
+                  showIcon
+                    ? {
+                        styles: {
+                          root: {
+                            width: iconSize,
+                            height: iconSize,
+                            //margin: 0,
+                            lineHeight: "normal",
+                          },
+                        },
+                        imageProps: {
+                          src:
+                            showIcon === ShowIconOptions.EntityIcon
+                              ? metadata?.associatedEntity.EntityIconUrl
+                              : item.data.iconSrc,
+                          imageFit: ImageFit.cover,
+                        },
+                        imageErrorAs: (imageProps) => (
+                          <Persona
+                            styles={{
+                              details: {
+                                display: "none",
+                              },
+                            }}
+                            coinProps={{
+                              styles: {
+                                initials: {
+                                  borderRadius: "2px",
+                                },
+                              },
+                            }}
+                            size={showIcon === ShowIconOptions.RecordImage ? PersonaSize.size24 : PersonaSize.size16}
+                            text={item.name}
+                            //imageInitials={item.name.split(" ").join("").substring(0, 1).toUpperCase()}
+                          />
+                        ),
+                      }
+                    : undefined
+                }
+                onClick={() => onTagClick(item)}
               >
                 {props.item.name}
               </ActionButton>
@@ -562,9 +503,9 @@ export default function PolyLookupControlClassic({
         const data = (tag as ITagWithData).data;
         const infoMap = new Map<string, string>();
         lookupViewConfig?.columns.forEach((column) => {
-          let displayValue = data[column + "@OData.Community.Display.V1.FormattedValue"];
+          let displayValue = data.entity[column + "@OData.Community.Display.V1.FormattedValue"];
           if (!displayValue) {
-            displayValue = data[column];
+            displayValue = data.entity[column];
           }
           infoMap.set(column, displayValue ?? "");
         });
@@ -583,16 +524,13 @@ export default function PolyLookupControlClassic({
   );
 }
 
-function getSuggestionTags(
-  suggestions: ComponentFramework.WebApi.Entity[] | undefined,
-  metadata: IMetadata | undefined
-) {
+function getSuggestionTags(suggestions: EntityOption[] | undefined, metadata: IMetadata | undefined) {
   return (
     suggestions?.map(
       (i) =>
         ({
-          key: i[metadata?.associatedEntity.PrimaryIdAttribute ?? ""] ?? "",
-          name: i[metadata?.associatedEntity.PrimaryNameAttribute ?? ""] ?? "",
+          key: i.associatedId ?? "",
+          name: i.associatedName ?? "",
           data: i,
         }) as ITagWithData
     ) ?? []

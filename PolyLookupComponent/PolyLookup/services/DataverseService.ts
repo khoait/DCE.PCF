@@ -1,7 +1,6 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import Handlebars from "handlebars";
-import { useMemo } from "react";
 import { LanguagePack } from "../types/languagePack";
 import {
   IEntityDefinition,
@@ -105,97 +104,9 @@ export function useEntityOptions(
   searchText?: string,
   pageSize?: number
 ) {
-  const fetchXmlTemplateFn = useMemo(
-    () => (lookupViewConfig?.fetchXml ? Handlebars.compile(lookupViewConfig?.fetchXml) : null),
-    [lookupViewConfig?.fetchXml]
-  );
-
   return useQuery({
     queryKey: ["entityOptions", lookupViewConfig, searchText],
-    queryFn: async () => {
-      if (!metadata || !lookupViewConfig) return Promise.resolve([]);
-
-      let fetchXml = lookupViewConfig.fetchXml;
-      let shouldDefaultSearch = false;
-      if (lookupViewConfig.isSystemLookupView) {
-        shouldDefaultSearch = true;
-      } else {
-        if (
-          !fetchXml.includes("{{PolyLookupSearch}}") &&
-          !fetchXml.includes("{{ PolyLookupSearch}}") &&
-          !fetchXml.includes("{{PolyLookupSearch }}") &&
-          !fetchXml.includes("{{ PolyLookupSearch }}")
-        ) {
-          shouldDefaultSearch = true;
-        }
-
-        const currentRecord = getCurrentRecord();
-        fetchXml =
-          fetchXmlTemplateFn?.({
-            ...currentRecord,
-            PolyLookupSearch: searchText,
-          }) ?? fetchXml;
-      }
-
-      if (shouldDefaultSearch && searchText) {
-        // if lookup view is not specified and using default lookup fiew,
-        // add filter condition to fetchxml to support search
-        const doc = parser.parseFromString(fetchXml, "application/xml");
-        const entities = doc.documentElement.getElementsByTagName("entity");
-        for (let i = 0; i < entities.length; i++) {
-          const entity = entities[i];
-          if (entity.getAttribute("name") === metadata.associatedEntity.LogicalName) {
-            const filter = doc.createElement("filter");
-            const condition = doc.createElement("condition");
-            condition.setAttribute("attribute", metadata.associatedEntity.PrimaryNameAttribute);
-            if (searchText.includes("*")) {
-              const beginsWithWildCard = searchText.startsWith("*") ? true : false;
-              const endsWithWildCard = searchText.endsWith("*") ? true : false;
-              if (beginsWithWildCard || endsWithWildCard) {
-                if (beginsWithWildCard) {
-                  searchText = searchText.replace("*", "");
-                }
-                if (endsWithWildCard) {
-                  searchText = searchText.substring(0, searchText.length - 1);
-                }
-                searchText = "%" + searchText + "%";
-              } else {
-                searchText = searchText + "%";
-              }
-              searchText = searchText.split("*").join("%");
-              condition.setAttribute("operator", "like");
-              condition.setAttribute("value", `${searchText}`);
-            } else {
-              condition.setAttribute("operator", "begins-with");
-              condition.setAttribute("value", `${searchText}`);
-            }
-            filter.appendChild(condition);
-            entity.appendChild(filter);
-          }
-        }
-        fetchXml = serializer.serializeToString(doc);
-      }
-
-      const records = await retrieveMultipleFetch(metadata.associatedEntity.EntitySetName, fetchXml, 1, pageSize);
-      return records.map((r) => {
-        const iconSrc = metadata.associatedEntity.PrimaryImageAttribute
-          ? `/api/data/v${apiVersion}/${metadata.associatedEntity.EntitySetName}(${
-              r[metadata.associatedEntity.PrimaryIdAttribute]
-            })/${metadata.associatedEntity.PrimaryImageAttribute}/$value`
-          : "";
-
-        return {
-          id: r[metadata.associatedEntity.PrimaryIdAttribute],
-          intersectId: "",
-          associatedId: r[metadata.associatedEntity.PrimaryIdAttribute],
-          associatedName: r[metadata.associatedEntity.PrimaryNameAttribute],
-          optionText: r[metadata.associatedEntity.PrimaryNameAttribute],
-          selectedOptionText: r[metadata.associatedEntity.PrimaryNameAttribute],
-          iconSrc,
-          entity: r,
-        } as EntityOption;
-      });
-    },
+    queryFn: () => getEntityOptions(metadata, lookupViewConfig, searchText, pageSize),
     enabled: !!lookupViewConfig?.fetchXml,
   });
 }
@@ -208,6 +119,13 @@ export function useLanguagePack(webResourcePath: string | undefined, defaultLang
   });
 }
 
+export function useFilterQuery(metadata: IMetadata | undefined, lookupViewConfig: LookupView | undefined) {
+  return useMutation({
+    mutationFn: ({ searchText, pageSizeParam }: { searchText?: string; pageSizeParam?: number }) =>
+      getEntityOptions(metadata, lookupViewConfig, searchText, pageSizeParam),
+  });
+}
+
 export function useAssociateQuery(
   metadata: IMetadata | undefined,
   currentRecordId: string,
@@ -215,6 +133,7 @@ export function useAssociateQuery(
   clientUrl: string,
   languagePack: LanguagePack
 ) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => {
       if (relationshipType === RelationshipTypeEnum.ManyToMany) {
@@ -237,6 +156,11 @@ export function useAssociateQuery(
       }
       return Promise.reject(languagePack.RelationshipNotSupportedMessage);
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["selectedItems"],
+      });
+    },
   });
 }
 
@@ -246,6 +170,7 @@ export function useDisassociateQuery(
   relationshipType: RelationshipTypeEnum,
   languagePack: LanguagePack
 ) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => {
       if (relationshipType === RelationshipTypeEnum.ManyToMany) {
@@ -263,13 +188,107 @@ export function useDisassociateQuery(
       }
       return Promise.reject(languagePack.RelationshipNotSupportedMessage);
     },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["selectedItems"],
+      });
+    },
   });
 }
 
-export function getLanguagePack(
-  webResourceUrl: string | undefined,
-  defaultLanguagePack: LanguagePack
-): Promise<LanguagePack> {
+export async function getEntityOptions(
+  metadata: IMetadata | undefined,
+  lookupViewConfig: LookupView | undefined,
+  searchText?: string,
+  pageSize?: number
+) {
+  if (!metadata || !lookupViewConfig) return Promise.resolve([]);
+
+  let fetchXml = lookupViewConfig.fetchXml;
+  let shouldDefaultSearch = false;
+  if (lookupViewConfig.isSystemLookupView) {
+    shouldDefaultSearch = true;
+  } else {
+    if (
+      !fetchXml.includes("{{PolyLookupSearch}}") &&
+      !fetchXml.includes("{{ PolyLookupSearch}}") &&
+      !fetchXml.includes("{{PolyLookupSearch }}") &&
+      !fetchXml.includes("{{ PolyLookupSearch }}")
+    ) {
+      shouldDefaultSearch = true;
+    }
+
+    const fetchXmlTemplateFn = Handlebars.compile(fetchXml);
+
+    const currentRecord = getCurrentRecord();
+    fetchXml =
+      fetchXmlTemplateFn({
+        ...currentRecord,
+        PolyLookupSearch: searchText,
+      }) ?? fetchXml;
+  }
+
+  if (shouldDefaultSearch && searchText) {
+    // if lookup view is not specified and using default lookup fiew,
+    // add filter condition to fetchxml to support search
+    const doc = parser.parseFromString(fetchXml, "application/xml");
+    const entities = doc.documentElement.getElementsByTagName("entity");
+    for (let i = 0; i < entities.length; i++) {
+      const entity = entities[i];
+      if (entity.getAttribute("name") === metadata.associatedEntity.LogicalName) {
+        const filter = doc.createElement("filter");
+        const condition = doc.createElement("condition");
+        condition.setAttribute("attribute", metadata.associatedEntity.PrimaryNameAttribute);
+        if (searchText.includes("*")) {
+          const beginsWithWildCard = searchText.startsWith("*") ? true : false;
+          const endsWithWildCard = searchText.endsWith("*") ? true : false;
+          if (beginsWithWildCard || endsWithWildCard) {
+            if (beginsWithWildCard) {
+              searchText = searchText.replace("*", "");
+            }
+            if (endsWithWildCard) {
+              searchText = searchText.substring(0, searchText.length - 1);
+            }
+            searchText = "%" + searchText + "%";
+          } else {
+            searchText = searchText + "%";
+          }
+          searchText = searchText.split("*").join("%");
+          condition.setAttribute("operator", "like");
+          condition.setAttribute("value", `${searchText}`);
+        } else {
+          condition.setAttribute("operator", "begins-with");
+          condition.setAttribute("value", `${searchText}`);
+        }
+        filter.appendChild(condition);
+        entity.appendChild(filter);
+      }
+    }
+    fetchXml = serializer.serializeToString(doc);
+  }
+
+  const records = await retrieveMultipleFetch(metadata.associatedEntity.EntitySetName, fetchXml, 1, pageSize);
+  return records.map((r) => {
+    const iconSrc = metadata.associatedEntity.PrimaryImageAttribute
+      ? `/api/data/v${apiVersion}/${metadata.associatedEntity.EntitySetName}(${
+          r[metadata.associatedEntity.PrimaryIdAttribute]
+        })/${metadata.associatedEntity.PrimaryImageAttribute}/$value`
+      : "";
+
+    return {
+      id: r[metadata.associatedEntity.PrimaryIdAttribute],
+      intersectId: "",
+      associatedId: r[metadata.associatedEntity.PrimaryIdAttribute],
+      associatedName: r[metadata.associatedEntity.PrimaryNameAttribute],
+      optionText: r[metadata.associatedEntity.PrimaryNameAttribute],
+      selectedOptionText: r[metadata.associatedEntity.PrimaryNameAttribute],
+      iconSrc,
+      entity: r,
+    } as EntityOption;
+  });
+}
+
+function getLanguagePack(webResourceUrl: string | undefined, defaultLanguagePack: LanguagePack): Promise<LanguagePack> {
   const languagePack: LanguagePack = { ...defaultLanguagePack };
 
   if (webResourceUrl === undefined) return Promise.resolve(languagePack);

@@ -215,13 +215,7 @@ export default function PolyLookupControlNewLook({
         })
       );
     } else if (formType === XrmEnum.FormType.Update) {
-      associateQuery(value, {
-        onSuccess: () => {
-          queryClient.invalidateQueries({
-            queryKey: ["selectedItems"],
-          });
-        },
-      });
+      associateQuery(value);
     }
   };
 
@@ -239,13 +233,7 @@ export default function PolyLookupControlNewLook({
         })
       );
     } else if (formType === XrmEnum.FormType.Update) {
-      disassociateQuery(value, {
-        onSuccess: () => {
-          queryClient.invalidateQueries({
-            queryKey: ["selectedItems"],
-          });
-        },
-      });
+      disassociateQuery(value);
     }
   };
 
@@ -360,7 +348,9 @@ export default function PolyLookupControlNewLook({
                   </InteractionTag>
                 ))}
               </TagGroup>
-              {disabled ? null : <TagPickerInput value={searchText} onChange={(e) => setSearchText(e.target.value)} />}
+              {disabled || (itemLimit && (selectedItems?.length ?? 0) >= itemLimit) ? null : (
+                <TagPickerInput value={searchText} onChange={(e) => setSearchText(e.target.value)} />
+              )}
             </>
           )}
         </TagPickerControl>
