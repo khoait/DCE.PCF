@@ -365,19 +365,21 @@ export default function PolyLookupControlNewLook({
             ? entityOptions.map((option) => (
                 <TagPickerOption
                   media={
-                    <Avatar
-                      size={showIcon === ShowIconOptions.EntityIcon ? 16 : 28}
-                      shape="square"
-                      name={option.associatedName}
-                      image={{
-                        src:
-                          showIcon === ShowIconOptions.EntityIcon
-                            ? metadata?.associatedEntity.EntityIconUrl
-                            : option.iconSrc,
-                      }}
-                      color={showIcon === ShowIconOptions.EntityIcon ? "neutral" : "colorful"}
-                      aria-hidden
-                    />
+                    showIcon ? (
+                      <Avatar
+                        size={showIcon === ShowIconOptions.EntityIcon ? 16 : 28}
+                        shape="square"
+                        name={option.associatedName}
+                        image={{
+                          src:
+                            showIcon === ShowIconOptions.EntityIcon
+                              ? metadata?.associatedEntity.EntityIconUrl
+                              : option.iconSrc,
+                        }}
+                        color={showIcon === ShowIconOptions.EntityIcon ? "neutral" : "colorful"}
+                        aria-hidden
+                      />
+                    ) : undefined
                   }
                   key={option.id}
                   value={option.id}

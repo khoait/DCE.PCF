@@ -413,6 +413,8 @@ export default function PolyLookupControlClassic({
           text: [
             {
               flex: 1,
+            },
+            !!showIcon && {
               margin: 0,
             },
           ],
