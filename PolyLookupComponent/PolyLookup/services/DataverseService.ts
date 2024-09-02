@@ -618,7 +618,20 @@ async function getLookupViewConfig(
   const attributes = Array.from(doc.getElementsByTagName("attribute"));
   // extract columns from fetchXml
   if (lookupViewConfig.sourceType !== "ViewName") {
-    lookupViewConfig.columns = attributes.map((attr) => attr.getAttribute("name") ?? "").filter((attr) => attr !== "");
+    lookupViewConfig.columns = attributes
+      .map((attr) => {
+        const entityAlias = attr.parentElement?.getAttribute("alias");
+        const attributeName = attr.getAttribute("name") ?? "";
+        const attributeAlias = attr.getAttribute("alias");
+        if (attributeAlias) {
+          return attributeAlias;
+        }
+        if (entityAlias) {
+          return `${entityAlias}.${attributeName}`;
+        }
+        return attributeName;
+      })
+      .filter((attr) => attr !== "");
   }
 
   // check if doc has attribute with name equals primaryIdAttribute and primaryNameAttribute
@@ -692,7 +705,11 @@ export async function retrieveMultipleFetch(
       `/api/data/v${apiVersion}/${entitySetName}`,
       {
         headers: {
-          Prefer: "odata.include-annotations=OData.Community.Display.V1.FormattedValue",
+          "OData-MaxVersion": "4.0",
+          "OData-Version": "4.0",
+          "Content-Type": "application/json",
+          Prefer:
+            "odata.include-annotations=OData.Community.Display.V1.FormattedValue,Microsoft.Dynamics.CRM.associatednavigationproperty,Microsoft.Dynamics.CRM.lookuplogicalname",
         },
         params: {
           fetchXml: encodeURIComponent(newFetchXml),
