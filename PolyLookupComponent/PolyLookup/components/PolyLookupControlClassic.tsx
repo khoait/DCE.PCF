@@ -501,15 +501,7 @@ export default function PolyLookupControlClassic({
       }}
       onRenderSuggestionsItem={(tag: ITag) => {
         const data = (tag as ITagWithData).data;
-        const infoMap = new Map<string, string>();
-        lookupViewConfig?.columns.forEach((column) => {
-          let displayValue = data.entity[column + "@OData.Community.Display.V1.FormattedValue"];
-          if (!displayValue) {
-            displayValue = data.entity[column];
-          }
-          infoMap.set(column, displayValue ?? "");
-        });
-        return <SuggestionInfo infoMap={infoMap}></SuggestionInfo>;
+        return <SuggestionInfo data={data} columns={lookupViewConfig?.columns ?? []} />;
       }}
       resolveDelay={100}
       inputProps={{
@@ -529,8 +521,8 @@ function getSuggestionTags(suggestions: EntityOption[] | undefined, metadata: IM
     suggestions?.map(
       (i) =>
         ({
-          key: i.associatedId ?? "",
-          name: i.associatedName ?? "",
+          key: i.id ?? "",
+          name: i.optionText ?? "",
           data: i,
         }) as ITagWithData
     ) ?? []

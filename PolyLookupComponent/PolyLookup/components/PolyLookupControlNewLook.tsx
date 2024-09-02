@@ -37,6 +37,7 @@ import {
   TagAction,
 } from "../types/typings";
 import { sprintf } from "sprintf-js";
+import { SuggestionInfo } from "./SuggestionInfo";
 
 const useStyle = makeStyles({
   tagGroup: {
@@ -44,6 +45,9 @@ const useStyle = makeStyles({
     gap: `${tokens.spacingVerticalXS} ${tokens.spacingHorizontalS}`,
     paddingTop: tokens.spacingVerticalXS,
     paddingBottom: tokens.spacingVerticalXS,
+  },
+  marginLeft: {
+    marginLeft: tokens.spacingHorizontalS,
   },
 });
 
@@ -69,7 +73,7 @@ export default function PolyLookupControlNewLook({
   onQuickCreate,
 }: PolyLookupProps) {
   const queryClient = useQueryClient();
-  const { tagGroup } = useStyle();
+  const { tagGroup, marginLeft } = useStyle();
 
   const [searchText, setSearchText] = useState<string>("");
 
@@ -327,6 +331,7 @@ export default function PolyLookupControlNewLook({
                       media={
                         showIcon ? (
                           <Avatar
+                            className={showIcon === ShowIconOptions.EntityIcon ? marginLeft : undefined}
                             size={showIcon === ShowIconOptions.EntityIcon ? 16 : 28}
                             name={i.associatedName}
                             image={{
@@ -373,10 +378,11 @@ export default function PolyLookupControlNewLook({
                       aria-hidden
                     />
                   }
-                  value={option.id}
                   key={option.id}
+                  value={option.id}
+                  text={option.optionText}
                 >
-                  {option.optionText}
+                  <SuggestionInfo data={option} columns={lookupViewConfig?.columns ?? []} />
                 </TagPickerOption>
               ))
             : "No options available"}
