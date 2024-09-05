@@ -1,9 +1,11 @@
 import React from "react";
-import { IconButton, ILabelStyles, IStyle, Label, Stack } from "@fluentui/react";
+import { IconButton, ILabelStyles, IStyle, Label, Stack, Text } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
+import { EntityOption } from "../types/typings";
 
 export interface ISuggestionInfoProps {
-  infoMap: Map<string, string>;
+  data: EntityOption;
+  columns: string[];
 }
 
 const commonStyle: IStyle = {
@@ -21,29 +23,32 @@ const secondaryStyle: Partial<ILabelStyles> = {
   root: { ...commonStyle, color: "#666" },
 };
 
-export const SuggestionInfo = ({ infoMap }: ISuggestionInfoProps) => {
+export const SuggestionInfo = ({ data, columns }: ISuggestionInfoProps) => {
   const [showMore, { toggle: toggleshowMore }] = useBoolean(false);
 
-  let displayValueCount = 0;
-
-  infoMap.forEach((value) => {
-    if (value !== "") displayValueCount++;
+  const infoMap = new Map<string, string>();
+  columns.forEach((column) => {
+    let displayValue = data.entity[column + "@OData.Community.Display.V1.FormattedValue"];
+    if (!displayValue) {
+      displayValue = data.entity[column];
+    }
+    infoMap.set(column, displayValue ?? "");
   });
 
   return (
-    <Stack horizontal grow styles={{ root: { width: "100%" } }}>
+    <Stack horizontal grow styles={{ root: { flex: 1, minWidth: 0 } }}>
       <Stack.Item grow align="stretch" styles={{ root: { minWidth: "0", padding: 10 } }}>
         {Array.from(infoMap).map(([key, value], index) => {
           if (value === "") return null;
           if (!showMore && index > 0) return null;
           return (
             <div key={key}>
-              <Label styles={index === 0 ? primaryStyle : secondaryStyle}>{value}</Label>
+              <Text styles={index === 0 ? primaryStyle : secondaryStyle}>{value}</Text>
             </div>
           );
         })}
       </Stack.Item>
-      {displayValueCount > 1 ? (
+      {columns.length > 1 ? (
         <Stack.Item align="stretch">
           <IconButton
             iconProps={{ iconName: showMore ? "ChevronUp" : "ChevronDown" }}

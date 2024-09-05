@@ -1,4 +1,4 @@
-type RelationshipType = "OneToManyRelationship" | "ManyToManyRelationship";
+export type RelationshipType = "OneToManyRelationship" | "ManyToManyRelationship";
 
 export interface IRelationshipDefinition {
   SchemaName: string;
@@ -40,6 +40,12 @@ export interface IEntityDefinition {
   };
   DisplayCollectionNameLocalized: string;
   IsQuickCreateEnabled: boolean;
+  HasEmailAddresses: boolean;
+  IconVectorName: string;
+  IconSmallName: string;
+  IconMediumName: string;
+  PrimaryImageAttribute: string;
+  EntityIconUrl?: string;
 }
 
 interface IViewRow {
@@ -91,8 +97,8 @@ export interface IMetadata {
   currentEntity: IEntityDefinition;
   intersectEntity: IEntityDefinition;
   associatedEntity: IEntityDefinition;
-  currentIntesectAttribute: string;
-  associatedIntesectAttribute: string;
+  currentIntersectAttribute: string;
+  associatedIntersectAttribute: string;
   currentEntityNavigationPropertyName?: string;
   associatedEntityNavigationPropertyName?: string;
 }

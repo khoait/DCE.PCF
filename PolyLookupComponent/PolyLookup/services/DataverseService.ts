@@ -1,16 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import Handlebars from "handlebars";
 import { LanguagePack } from "../types/languagePack";
 import {
   IEntityDefinition,
   IManyToManyRelationship,
   IMetadata,
   IOneToManyRelationship,
-  isManyToMany,
   IViewDefinition,
   IViewLayout,
   LookupView,
+  isManyToMany,
 } from "../types/metadata";
+import { EntityOption, RelationshipTypeEnum } from "../types/typings";
 
 const nToNColumns = [
   "SchemaName",
@@ -40,11 +42,19 @@ const tableDefinitionColumns = [
   "EntitySetName",
   "DisplayCollectionName",
   "IsQuickCreateEnabled",
+  "HasEmailAddresses",
+  "IconVectorName",
+  "IconSmallName",
+  "IconMediumName",
+  "PrimaryImageAttribute",
 ];
 
 const viewDefinitionColumns = ["savedqueryid", "name", "fetchxml", "layoutjson", "querytype"];
 
 const apiVersion = "9.2";
+
+const parser = new DOMParser();
+const serializer = new XMLSerializer();
 
 export function useMetadata(currentTable: string, relationshipName: string, relationship2Name: string | undefined) {
   return useQuery({
@@ -74,24 +84,30 @@ export function useSelectedItems(
 ) {
   return useQuery({
     queryKey: ["selectedItems", metadata, currentRecordId, formType],
-    queryFn: () =>
-      retrieveAssociatedRecords(
-        currentRecordId,
-        metadata?.intersectEntity.LogicalName,
-        metadata?.intersectEntity.EntitySetName,
-        metadata?.intersectEntity.PrimaryIdAttribute,
-        metadata?.currentIntesectAttribute,
-        metadata?.associatedIntesectAttribute,
-        metadata?.associatedEntity.LogicalName,
-        metadata?.associatedEntity.PrimaryIdAttribute,
-        metadata?.associatedEntity.PrimaryNameAttribute
-      ),
+    queryFn: () => {
+      if (!metadata || !currentRecordId) return Promise.resolve([]);
+      return retrieveAssociatedRecords(metadata, currentRecordId);
+    },
     enabled:
+      !!currentRecordId &&
       !!metadata?.intersectEntity.EntitySetName &&
       !!metadata?.associatedEntity.EntitySetName &&
       (formType === XrmEnum.FormType.Update ||
         formType === XrmEnum.FormType.ReadOnly ||
         formType === XrmEnum.FormType.Disabled),
+  });
+}
+
+export function useEntityOptions(
+  metadata: IMetadata | undefined,
+  lookupViewConfig: LookupView | undefined,
+  searchText?: string,
+  pageSize?: number
+) {
+  return useQuery({
+    queryKey: ["entityOptions", lookupViewConfig, searchText],
+    queryFn: () => getEntityOptions(metadata, lookupViewConfig, searchText, pageSize),
+    enabled: !!lookupViewConfig?.fetchXml,
   });
 }
 
@@ -103,10 +119,176 @@ export function useLanguagePack(webResourcePath: string | undefined, defaultLang
   });
 }
 
-export function getLanguagePack(
-  webResourceUrl: string | undefined,
-  defaultLanguagePack: LanguagePack
-): Promise<LanguagePack> {
+export function useFilterQuery(metadata: IMetadata | undefined, lookupViewConfig: LookupView | undefined) {
+  return useMutation({
+    mutationFn: ({ searchText, pageSizeParam }: { searchText?: string; pageSizeParam?: number }) =>
+      getEntityOptions(metadata, lookupViewConfig, searchText, pageSizeParam),
+  });
+}
+
+export function useAssociateQuery(
+  metadata: IMetadata | undefined,
+  currentRecordId: string,
+  relationshipType: RelationshipTypeEnum,
+  clientUrl: string,
+  languagePack: LanguagePack
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => {
+      if (relationshipType === RelationshipTypeEnum.ManyToMany) {
+        return associateRecord(
+          metadata?.currentEntity.EntitySetName,
+          currentRecordId,
+          metadata?.associatedEntity?.EntitySetName,
+          id,
+          metadata?.relationship1.SchemaName,
+          clientUrl
+        );
+      } else if (
+        relationshipType === RelationshipTypeEnum.Custom ||
+        relationshipType === RelationshipTypeEnum.Connection
+      ) {
+        return createRecord(metadata?.intersectEntity.EntitySetName, {
+          [`${metadata?.currentEntityNavigationPropertyName}@odata.bind`]: `/${metadata?.currentEntity.EntitySetName}(${currentRecordId})`,
+          [`${metadata?.associatedEntityNavigationPropertyName}@odata.bind`]: `/${metadata?.associatedEntity.EntitySetName}(${id})`,
+        });
+      }
+      return Promise.reject(languagePack.RelationshipNotSupportedMessage);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["selectedItems"],
+      });
+    },
+  });
+}
+
+export function useDisassociateQuery(
+  metadata: IMetadata | undefined,
+  currentRecordId: string,
+  relationshipType: RelationshipTypeEnum,
+  languagePack: LanguagePack
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => {
+      if (relationshipType === RelationshipTypeEnum.ManyToMany) {
+        return disassociateRecord(
+          metadata?.currentEntity?.EntitySetName,
+          currentRecordId,
+          metadata?.relationship1.SchemaName,
+          id
+        );
+      } else if (
+        relationshipType === RelationshipTypeEnum.Custom ||
+        relationshipType === RelationshipTypeEnum.Connection
+      ) {
+        return deleteRecord(metadata?.intersectEntity.EntitySetName, id);
+      }
+      return Promise.reject(languagePack.RelationshipNotSupportedMessage);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["selectedItems"],
+      });
+    },
+  });
+}
+
+export async function getEntityOptions(
+  metadata: IMetadata | undefined,
+  lookupViewConfig: LookupView | undefined,
+  searchText?: string,
+  pageSize?: number
+) {
+  if (!metadata || !lookupViewConfig) return Promise.resolve([]);
+
+  let fetchXml = lookupViewConfig.fetchXml;
+  let shouldDefaultSearch = false;
+  if (lookupViewConfig.isSystemLookupView) {
+    shouldDefaultSearch = true;
+  } else {
+    if (
+      !fetchXml.includes("{{PolyLookupSearch}}") &&
+      !fetchXml.includes("{{ PolyLookupSearch}}") &&
+      !fetchXml.includes("{{PolyLookupSearch }}") &&
+      !fetchXml.includes("{{ PolyLookupSearch }}")
+    ) {
+      shouldDefaultSearch = true;
+    }
+
+    const fetchXmlTemplateFn = Handlebars.compile(fetchXml);
+
+    const currentRecord = getCurrentRecord();
+    fetchXml =
+      fetchXmlTemplateFn({
+        ...currentRecord,
+        PolyLookupSearch: searchText,
+      }) ?? fetchXml;
+  }
+
+  if (shouldDefaultSearch && searchText) {
+    // if lookup view is not specified and using default lookup fiew,
+    // add filter condition to fetchxml to support search
+    const doc = parser.parseFromString(fetchXml, "application/xml");
+    const entities = doc.documentElement.getElementsByTagName("entity");
+    for (let i = 0; i < entities.length; i++) {
+      const entity = entities[i];
+      if (entity.getAttribute("name") === metadata.associatedEntity.LogicalName) {
+        const filter = doc.createElement("filter");
+        const condition = doc.createElement("condition");
+        condition.setAttribute("attribute", metadata.associatedEntity.PrimaryNameAttribute);
+        if (searchText.includes("*")) {
+          const beginsWithWildCard = searchText.startsWith("*") ? true : false;
+          const endsWithWildCard = searchText.endsWith("*") ? true : false;
+          if (beginsWithWildCard || endsWithWildCard) {
+            if (beginsWithWildCard) {
+              searchText = searchText.replace("*", "");
+            }
+            if (endsWithWildCard) {
+              searchText = searchText.substring(0, searchText.length - 1);
+            }
+            searchText = "%" + searchText + "%";
+          } else {
+            searchText = searchText + "%";
+          }
+          searchText = searchText.split("*").join("%");
+          condition.setAttribute("operator", "like");
+          condition.setAttribute("value", `${searchText}`);
+        } else {
+          condition.setAttribute("operator", "begins-with");
+          condition.setAttribute("value", `${searchText}`);
+        }
+        filter.appendChild(condition);
+        entity.appendChild(filter);
+      }
+    }
+    fetchXml = serializer.serializeToString(doc);
+  }
+
+  const records = await retrieveMultipleFetch(metadata.associatedEntity.EntitySetName, fetchXml, 1, pageSize);
+  return records.map((r) => {
+    const iconSrc = metadata.associatedEntity.PrimaryImageAttribute
+      ? `/api/data/v${apiVersion}/${metadata.associatedEntity.EntitySetName}(${
+          r[metadata.associatedEntity.PrimaryIdAttribute]
+        })/${metadata.associatedEntity.PrimaryImageAttribute}/$value`
+      : "";
+
+    return {
+      id: r[metadata.associatedEntity.PrimaryIdAttribute],
+      intersectId: "",
+      associatedId: r[metadata.associatedEntity.PrimaryIdAttribute],
+      associatedName: r[metadata.associatedEntity.PrimaryNameAttribute],
+      optionText: r[metadata.associatedEntity.PrimaryNameAttribute],
+      selectedOptionText: r[metadata.associatedEntity.PrimaryNameAttribute],
+      iconSrc,
+      entity: r,
+    } as EntityOption;
+  });
+}
+
+function getLanguagePack(webResourceUrl: string | undefined, defaultLanguagePack: LanguagePack): Promise<LanguagePack> {
   const languagePack: LanguagePack = { ...defaultLanguagePack };
 
   if (webResourceUrl === undefined) return Promise.resolve(languagePack);
@@ -196,11 +378,15 @@ export function getEntityDefinition(entityName: string | undefined) {
             $select: tableDefinitionColumns.join(","),
           },
         })
-        .then((res) => {
+        .then(({ data }) => {
+          const entityIconName = data.IconVectorName ?? data.IconMediumName ?? data.IconSmallName;
+          const EntityIconUrl = entityIconName ? `/WebResources/${entityIconName}` : "";
+
           return {
-            ...res.data,
-            DisplayNameLocalized: res.data.DisplayName.UserLocalizedLabel?.Label ?? "",
-            DisplayCollectionNameLocalized: res.data.DisplayCollectionName.UserLocalizedLabel?.Label ?? "",
+            ...data,
+            DisplayNameLocalized: data.DisplayName.UserLocalizedLabel?.Label ?? "",
+            DisplayCollectionNameLocalized: data.DisplayCollectionName.UserLocalizedLabel?.Label ?? "",
+            EntityIconUrl,
           } as IEntityDefinition;
         });
 }
@@ -302,8 +488,8 @@ async function getMetadata(
       currentEntity,
       intersectEntity,
       associatedEntity,
-      currentIntesectAttribute,
-      associatedIntesectAttribute,
+      currentIntersectAttribute: currentIntesectAttribute,
+      associatedIntersectAttribute: associatedIntesectAttribute,
       currentEntityNavigationPropertyName,
       associatedEntityNavigationPropertyName,
     };
@@ -318,7 +504,7 @@ async function getLookupViewConfig(
   primaryIdAttribute: string | undefined,
   primaryNameAttribute: string | undefined,
   lookupViewValue: string | undefined
-) {
+): Promise<LookupView> {
   if (
     typeof associatedEntityName === "undefined" ||
     typeof primaryIdAttribute === "undefined" ||
@@ -432,7 +618,20 @@ async function getLookupViewConfig(
   const attributes = Array.from(doc.getElementsByTagName("attribute"));
   // extract columns from fetchXml
   if (lookupViewConfig.sourceType !== "ViewName") {
-    lookupViewConfig.columns = attributes.map((attr) => attr.getAttribute("name") ?? "").filter((attr) => attr !== "");
+    lookupViewConfig.columns = attributes
+      .map((attr) => {
+        const entityAlias = attr.parentElement?.getAttribute("alias");
+        const attributeName = attr.getAttribute("name") ?? "";
+        const attributeAlias = attr.getAttribute("alias");
+        if (attributeAlias) {
+          return attributeAlias;
+        }
+        if (entityAlias) {
+          return `${entityAlias}.${attributeName}`;
+        }
+        return attributeName;
+      })
+      .filter((attr) => attr !== "");
   }
 
   // check if doc has attribute with name equals primaryIdAttribute and primaryNameAttribute
@@ -506,7 +705,11 @@ export async function retrieveMultipleFetch(
       `/api/data/v${apiVersion}/${entitySetName}`,
       {
         headers: {
-          Prefer: "odata.include-annotations=OData.Community.Display.V1.FormattedValue",
+          "OData-MaxVersion": "4.0",
+          "OData-Version": "4.0",
+          Accept: "application/json",
+          Prefer:
+            'odata.include-annotations="OData.Community.Display.V1.FormattedValue,Microsoft.Dynamics.CRM.associatednavigationproperty,Microsoft.Dynamics.CRM.lookuplogicalname"',
         },
         params: {
           fetchXml: encodeURIComponent(newFetchXml),
@@ -531,52 +734,52 @@ export async function retrieveMultipleFetch(
 }
 
 export async function retrieveAssociatedRecords(
-  currentRecordId: string | undefined,
-  intersectEntity: string | undefined,
-  intersectEntitySet: string | undefined,
-  intersectPrimaryIdAttribute: string | undefined,
-  currentIntersectAttribute: string | undefined,
-  associatedIntersectAttribute: string | undefined,
-  associatedEntity: string | undefined,
-  associatedEntityPrimaryIdAttribute: string | undefined,
-  associatedEntityPrimaryNameAttribute: string | undefined
+  {
+    relationship1,
+    intersectEntity,
+    associatedEntity,
+    currentIntersectAttribute,
+    associatedIntersectAttribute,
+  }: IMetadata,
+  currentRecordId: string
 ) {
-  if (
-    typeof currentRecordId === "undefined" ||
-    typeof intersectEntity === "undefined" ||
-    typeof intersectEntitySet === "undefined" ||
-    typeof intersectPrimaryIdAttribute === "undefined" ||
-    typeof currentIntersectAttribute === "undefined" ||
-    typeof associatedIntersectAttribute === "undefined" ||
-    typeof associatedEntity === "undefined" ||
-    typeof associatedEntityPrimaryIdAttribute === "undefined" ||
-    typeof associatedEntityPrimaryNameAttribute === "undefined"
-  ) {
-    return Promise.reject(new Error("Invalid arguments"));
-  }
-
   const fetchXml = `<fetch>
-    <entity name="${intersectEntity}">
-      <attribute name="${intersectPrimaryIdAttribute}" />  
+    <entity name="${intersectEntity.LogicalName}">
+      <attribute name="${intersectEntity.PrimaryIdAttribute}" />  
       <filter>
         <condition attribute="${currentIntersectAttribute}" operator="eq" value="${currentRecordId}" />
       </filter>
-      <link-entity name="${associatedEntity}" from="${associatedEntityPrimaryIdAttribute}" to="${associatedIntersectAttribute}" alias="aLink">
-        <attribute name="${associatedEntityPrimaryIdAttribute}" />  
-        <attribute name="${associatedEntityPrimaryNameAttribute}" />
+      <link-entity name="${associatedEntity.LogicalName}" from="${associatedEntity.PrimaryIdAttribute}" to="${associatedIntersectAttribute}" alias="aLink">
+        <attribute name="${associatedEntity.PrimaryIdAttribute}" />  
+        <attribute name="${associatedEntity.PrimaryNameAttribute}" />
       </link-entity>
     </entity>
   </fetch>`;
 
-  const results = await retrieveMultipleFetch(intersectEntitySet, fetchXml);
+  const results = await retrieveMultipleFetch(intersectEntity.EntitySetName, fetchXml);
   return results.map((r) => {
-    const id = r[`aLink.${associatedEntityPrimaryIdAttribute}`];
-    const name = r[`aLink.${associatedEntityPrimaryNameAttribute}`];
-    return {
-      [intersectPrimaryIdAttribute]: r[intersectPrimaryIdAttribute],
-      [associatedEntityPrimaryIdAttribute]: id,
-      [associatedEntityPrimaryNameAttribute]: name,
+    const intersectId = r[intersectEntity.PrimaryIdAttribute];
+    const associatedId = r[`aLink.${associatedEntity.PrimaryIdAttribute}`];
+    const associatedName = r[`aLink.${associatedEntity.PrimaryNameAttribute}`];
+    const entity = {
+      [associatedEntity.PrimaryIdAttribute]: associatedId,
+      [associatedEntity.PrimaryNameAttribute]: associatedName,
     } as ComponentFramework.WebApi.Entity;
+
+    const iconSrc = associatedEntity.PrimaryImageAttribute
+      ? `/api/data/v${apiVersion}/${associatedEntity.EntitySetName}(${associatedId})/${associatedEntity.PrimaryImageAttribute}/$value`
+      : "";
+
+    return {
+      id: relationship1.RelationshipType === "ManyToManyRelationship" ? associatedId : intersectId,
+      intersectId,
+      associatedId,
+      associatedName,
+      optionText: associatedName,
+      selectedOptionText: associatedName,
+      iconSrc,
+      entity,
+    } as EntityOption;
   });
 }
 
@@ -723,4 +926,13 @@ async function getEnvironmentVariableValue(environmentVariableName: string) {
   } catch (error) {
     return null;
   }
+}
+
+function checkImage(imgUrl: string): Promise<boolean> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => reject(false);
+    img.src = imgUrl;
+  });
 }
