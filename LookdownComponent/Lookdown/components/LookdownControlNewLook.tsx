@@ -35,20 +35,6 @@ const useStyle = makeStyles({
   dropdown: {
     width: "100%",
     minWidth: "0px",
-    backgroundColor: tokens.colorNeutralBackground3,
-    ...shorthands.borderColor(tokens.colorTransparentStroke),
-    ":hover": {
-      ...shorthands.borderColor(tokens.colorTransparentStroke),
-    },
-    ":active": {
-      ...shorthands.borderColor(tokens.colorTransparentStroke),
-    },
-    ":focus": {
-      ...shorthands.borderColor(tokens.colorTransparentStroke),
-    },
-    ":focus-within": {
-      ...shorthands.borderColor(tokens.colorTransparentStroke),
-    },
   },
   optionLayout: {
     display: "flex",
@@ -311,6 +297,7 @@ export default function LookdownControlNewLook({
     <FluentProvider style={{ width: "100%" }} theme={fluentDesign?.tokenTheme}>
       <div className={styles.root}>
         <Dropdown
+          appearance="filled-darker"
           className={dropdownStyles}
           clearable
           placeholder={isError ? languagePack.LoadDataErrorMessage : "---"}
