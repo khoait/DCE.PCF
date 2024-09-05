@@ -8,8 +8,7 @@
     "lint": "pcf-scripts lint",
     "lint:fix": "pcf-scripts lint fix",
     "rebuild": "pcf-scripts rebuild",
-    "start": "pcf-scripts start",
-    "start:watch": "pcf-scripts start watch",
+    "start": "pcf-scripts start watch",
     "refreshTypes": "pcf-scripts refreshTypes"
   },
   "dependencies": {
