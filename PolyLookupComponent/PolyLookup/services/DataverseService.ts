@@ -707,9 +707,9 @@ export async function retrieveMultipleFetch(
         headers: {
           "OData-MaxVersion": "4.0",
           "OData-Version": "4.0",
-          "Content-Type": "application/json",
+          Accept: "application/json",
           Prefer:
-            "odata.include-annotations=OData.Community.Display.V1.FormattedValue,Microsoft.Dynamics.CRM.associatednavigationproperty,Microsoft.Dynamics.CRM.lookuplogicalname",
+            'odata.include-annotations="OData.Community.Display.V1.FormattedValue,Microsoft.Dynamics.CRM.associatednavigationproperty,Microsoft.Dynamics.CRM.lookuplogicalname"',
         },
         params: {
           fetchXml: encodeURIComponent(newFetchXml),

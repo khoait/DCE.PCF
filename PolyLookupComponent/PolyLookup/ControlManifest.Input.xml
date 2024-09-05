@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DCEPCF" constructor="PolyLookup" version="1.5.3" display-name-key="PolyLookup v1.5.3" description-key="Multi-select lookup supporting different type of many-to-many relationships" control-type="standard" >
+  <control namespace="DCEPCF" constructor="PolyLookup" version="1.6.0" display-name-key="PolyLookup v1.6.0" description-key="Multi-select lookup supporting different type of many-to-many relationships" control-type="standard" >
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
     Example1:
