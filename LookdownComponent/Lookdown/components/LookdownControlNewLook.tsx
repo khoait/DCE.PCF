@@ -58,7 +58,13 @@ const useStyle = makeStyles({
     ...shorthands.gap(tokens.spacingHorizontalS),
   },
   flexFill: {
-    flex: 1,
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+    minWidth: 0,
+  },
+  breakWord: {
+    wordBreak: "break-word",
   },
 });
 
@@ -305,7 +311,7 @@ export default function LookdownControlNewLook({
     <FluentProvider style={{ width: "100%" }} theme={fluentDesign?.tokenTheme}>
       <div className={styles.root}>
         <Dropdown
-          className={styles.dropdown}
+          className={dropdownStyles}
           clearable
           placeholder={isError ? languagePack.LoadDataErrorMessage : "---"}
           value={isError ? "" : selectedDisplayText}
@@ -356,6 +362,7 @@ interface OptionDisplayProps {
 
 function OptionDisplay({ optionText, iconSrc, iconSize }: OptionDisplayProps) {
   const styles = useStyle();
+  const optionTextStyles = mergeClasses(styles.flexFill, styles.breakWord);
 
   return (
     <div className={styles.optionLayout}>
@@ -365,7 +372,7 @@ function OptionDisplay({ optionText, iconSrc, iconSize }: OptionDisplayProps) {
         </div>
       ) : null}
 
-      <div className={styles.flexFill}>{optionText}</div>
+      <div className={optionTextStyles}>{optionText}</div>
     </div>
   );
 }
