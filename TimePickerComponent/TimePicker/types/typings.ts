@@ -8,5 +8,6 @@ export interface TimePickerControlProps {
   increment?: number;
   startHour?: number;
   endHour?: number;
+  fluentDesign?: ComponentFramework.FluentDesignState;
   onTimeChange?: (selectedTime: Date | null) => void;
 }

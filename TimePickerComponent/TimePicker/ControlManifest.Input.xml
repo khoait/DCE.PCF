@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DCEPCF" constructor="TimePicker" version="1.0.0" display-name-key="TimePicker v1.0.0" description-key="TimePicker displays the time part and supports quick values with a dropdown" control-type="standard" >
+  <control namespace="DCEPCF" constructor="TimePicker" version="1.0.1" display-name-key="TimePicker v1.0.1" description-key="TimePicker displays the time part and supports quick values with a dropdown" control-type="standard" >
     <external-service-usage enabled="false">   
     </external-service-usage>    
     <property name="boundField" display-name-key="Bound Field" description-key="The field that the component is bound to" of-type="DateAndTime.DateAndTime" usage="bound" required="true" />   
