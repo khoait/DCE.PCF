@@ -375,36 +375,40 @@ export default function PolyLookupControlNewLook({
             </>
           )}
         </TagPickerControl>
-        <TagPickerList>
-          {optionList?.length && isSuccessEntityOptions
-            ? optionList.map((option) => (
-                <TagPickerOption
-                  media={
-                    showIcon ? (
-                      <Avatar
-                        size={showIcon === ShowIconOptions.EntityIcon ? 16 : 28}
-                        shape="square"
-                        name={option.optionText}
-                        image={{
-                          src:
-                            showIcon === ShowIconOptions.EntityIcon
-                              ? metadata?.associatedEntity.EntityIconUrl
-                              : option.iconSrc,
-                        }}
-                        color={showIcon === ShowIconOptions.EntityIcon ? "neutral" : "colorful"}
-                        aria-hidden
-                      />
-                    ) : undefined
-                  }
-                  key={option.id}
-                  value={option.id}
-                  text={option.optionText}
-                >
-                  <SuggestionInfo data={option} columns={lookupViewConfig?.columns ?? []} />
-                </TagPickerOption>
-              ))
-            : "No options available"}
-        </TagPickerList>
+        {disabled || (itemLimit && (selectedItems?.length ?? 0) >= itemLimit) ? (
+          <></>
+        ) : (
+          <TagPickerList>
+            {optionList?.length && isSuccessEntityOptions
+              ? optionList.map((option) => (
+                  <TagPickerOption
+                    media={
+                      showIcon ? (
+                        <Avatar
+                          size={showIcon === ShowIconOptions.EntityIcon ? 16 : 28}
+                          shape="square"
+                          name={option.optionText}
+                          image={{
+                            src:
+                              showIcon === ShowIconOptions.EntityIcon
+                                ? metadata?.associatedEntity.EntityIconUrl
+                                : option.iconSrc,
+                          }}
+                          color={showIcon === ShowIconOptions.EntityIcon ? "neutral" : "colorful"}
+                          aria-hidden
+                        />
+                      ) : undefined
+                    }
+                    key={option.id}
+                    value={option.id}
+                    text={option.optionText}
+                  >
+                    <SuggestionInfo data={option} columns={lookupViewConfig?.columns ?? []} />
+                  </TagPickerOption>
+                ))
+              : "No options available"}
+          </TagPickerList>
+        )}
       </TagPicker>
     </FluentProvider>
   );
