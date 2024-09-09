@@ -49,6 +49,12 @@ const useStyle = makeStyles({
   marginLeft: {
     marginLeft: tokens.spacingHorizontalS,
   },
+  underline: {
+    textDecoration: "underline",
+  },
+  borderTransparent: {
+    borderLeftColor: "transparent",
+  },
 });
 
 export default function PolyLookupControlNewLook({
@@ -73,7 +79,7 @@ export default function PolyLookupControlNewLook({
   onQuickCreate,
 }: PolyLookupProps) {
   const queryClient = useQueryClient();
-  const { tagGroup, marginLeft } = useStyle();
+  const { tagGroup, marginLeft, underline, borderTransparent } = useStyle();
 
   const [searchText, setSearchText] = useState<string>("");
 
@@ -305,7 +311,7 @@ export default function PolyLookupControlNewLook({
     <FluentProvider style={{ width: "100%" }} theme={fluentDesign?.tokenTheme}>
       <TagPicker
         appearance="filled-darker"
-        size="large"
+        size="medium"
         selectedOptions={selectedItems?.map((i) => i.id) ?? []}
         onOptionSelect={handleOnOptionSelect}
         disabled={shouldDisable()}
@@ -313,7 +319,7 @@ export default function PolyLookupControlNewLook({
       >
         <TagPickerControl
           secondaryAction={
-            onQuickCreate && !entityOptions?.length && !isFetchingEntityOptions ? (
+            onQuickCreate && !entityOptions?.length && !isFetchingEntityOptions && !isDataLoading ? (
               <Button appearance="transparent" size="small" shape="rounded" onClick={handleQuickCreate}>
                 {languagePack.AddNewLabel}
               </Button>
@@ -326,15 +332,22 @@ export default function PolyLookupControlNewLook({
             <>
               <TagGroup className={tagGroup} onDismiss={handleOnOptionDismiss}>
                 {(selectedItems ?? selectedEntitiesCreate).map((i) => (
-                  <InteractionTag key={i.id} shape="rounded" appearance={tagAction ? "brand" : "outline"} value={i.id}>
+                  <InteractionTag
+                    key={i.id}
+                    shape="rounded"
+                    size="small"
+                    appearance={tagAction ? "brand" : "outline"}
+                    value={i.id}
+                  >
                     <InteractionTagPrimary
+                      className={tagAction ? underline : undefined}
                       hasSecondaryAction={!disabled}
                       media={
                         showIcon ? (
                           <Avatar
                             className={showIcon === ShowIconOptions.EntityIcon ? marginLeft : undefined}
-                            size={showIcon === ShowIconOptions.EntityIcon ? 16 : 28}
-                            name={i.associatedName}
+                            size={showIcon === ShowIconOptions.EntityIcon ? 16 : 20}
+                            name={i.selectedOptionText}
                             image={{
                               src:
                                 showIcon === ShowIconOptions.EntityIcon
@@ -350,7 +363,7 @@ export default function PolyLookupControlNewLook({
                     >
                       {i.selectedOptionText}
                     </InteractionTagPrimary>
-                    {disabled ? null : <InteractionTagSecondary aria-label="remove" />}
+                    {disabled ? null : <InteractionTagSecondary className={borderTransparent} aria-label="remove" />}
                   </InteractionTag>
                 ))}
               </TagGroup>
@@ -369,7 +382,7 @@ export default function PolyLookupControlNewLook({
                       <Avatar
                         size={showIcon === ShowIconOptions.EntityIcon ? 16 : 28}
                         shape="square"
-                        name={option.associatedName}
+                        name={option.optionText}
                         image={{
                           src:
                             showIcon === ShowIconOptions.EntityIcon
