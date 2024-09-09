@@ -635,8 +635,12 @@ async function getLookupViewConfig(
   }
 
   // check if doc has attribute with name equals primaryIdAttribute and primaryNameAttribute
-  const hasPrimaryIdAttribute = attributes.some((attr) => attr.getAttribute("name") === primaryIdAttribute);
-  const hasPrimaryNameAttribute = attributes.some((attr) => attr.getAttribute("name") === primaryNameAttribute);
+  const hasPrimaryIdAttribute = attributes.some(
+    (attr) => attr.getAttribute("name") === primaryIdAttribute && !attr.hasAttribute("alias")
+  );
+  const hasPrimaryNameAttribute = attributes.some(
+    (attr) => attr.getAttribute("name") === primaryNameAttribute && !attr.hasAttribute("alias")
+  );
 
   if (!hasPrimaryIdAttribute) {
     const primaryIdAttr = doc.createElement("attribute");
