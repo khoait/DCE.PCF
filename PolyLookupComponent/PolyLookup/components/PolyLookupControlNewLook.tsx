@@ -136,7 +136,9 @@ export default function PolyLookupControlNewLook({
     error: errorEntityOptions,
   } = useEntityOptions(metadata, lookupViewConfig, searchText, pageSize);
 
-  const optionList = entityOptions?.filter((option) => !selectedItems?.find((i) => i.id === option.id));
+  const optionList = entityOptions?.filter(
+    (option) => !selectedItems?.some((i) => i.associatedId === option.associatedId)
+  );
 
   const { mutate: associateQuery } = useAssociateQuery(
     metadata,

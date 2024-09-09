@@ -150,10 +150,17 @@ export default function PolyLookupControlClassic({
   const { mutate: disassociateQuery } = useDisassociateQuery(metadata, currentRecordId, relationshipType, languagePack);
 
   const filterSuggestions = useCallback(
-    async (filterText: string, selectedTag?: ITag[]): Promise<ITag[]> => {
+    async (filterText: string, selectedTags?: ITag[]): Promise<ITag[]> => {
       try {
         const results = await filterQueryAsync({ searchText: filterText, pageSizeParam: pageSize });
-        return getSuggestionTags(results, metadata);
+        const options = results.filter(
+          (r) =>
+            !selectedTags?.some((t) => {
+              const data = (t as ITagWithData).data;
+              return data.associatedId === r.associatedId;
+            })
+        );
+        return getSuggestionTags(options, metadata);
       } catch {
         // ignore error and return empty array
       }
@@ -163,13 +170,20 @@ export default function PolyLookupControlClassic({
   );
 
   const showMoreSuggestions = useCallback(
-    async (filterText: string, selectedTag?: ITag[]): Promise<ITag[]> => {
+    async (filterText: string, selectedTags?: ITag[]): Promise<ITag[]> => {
       try {
         const results = await filterQueryAsync({
           searchText: filterText,
           pageSizeParam: (pageSize ?? 50) * 2 + 1,
         });
-        return getSuggestionTags(results, metadata);
+        const options = results.filter(
+          (r) =>
+            !selectedTags?.some((t) => {
+              const data = (t as ITagWithData).data;
+              return data.associatedId === r.associatedId;
+            })
+        );
+        return getSuggestionTags(options, metadata);
       } catch {
         // ignore error and return empty array
       }
@@ -182,7 +196,14 @@ export default function PolyLookupControlClassic({
     async (selectedTags?: ITag[]): Promise<ITag[]> => {
       try {
         const results = await filterQueryAsync({ searchText: "", pageSizeParam: pageSize });
-        return getSuggestionTags(results, metadata);
+        const options = results.filter(
+          (r) =>
+            !selectedTags?.some((t) => {
+              const data = (t as ITagWithData).data;
+              return data.associatedId === r.associatedId;
+            })
+        );
+        return getSuggestionTags(options, metadata);
       } catch {
         // ignore error and return empty array
       }
