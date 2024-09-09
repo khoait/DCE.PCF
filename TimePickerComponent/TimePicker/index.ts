@@ -1,15 +1,12 @@
 import React from "react";
 import { createRoot, Root } from "react-dom/client";
 import TimePickerControl from "./components/TimePickerControl";
-import TimePickerControlNewLook from "./components/TimePickerControlNewLook";
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import { convertDate, getUtcDate } from "./services/dateService";
 import { IExtendedContext } from "./types/extendedContext";
 import { TimePickerControlProps } from "./types/typings";
 
-export class TimePicker
-  implements ComponentFramework.StandardControl<IInputs, IOutputs>
-{
+export class TimePicker implements ComponentFramework.StandardControl<IInputs, IOutputs> {
   private context: IExtendedContext;
   private container: HTMLDivElement;
   private notifyOutputChanged: () => void;
@@ -18,7 +15,9 @@ export class TimePicker
   /**
    * Empty constructor.
    */
-  constructor() {}
+  constructor() {
+    // empty
+  }
 
   /**
    * Used to initialize the control instance. Controls can kick off remote server calls and other initialization actions here.
@@ -68,14 +67,8 @@ export class TimePicker
   }
 
   public render(): void {
-    const isNewLook = !!this.context.fluentDesignLanguage;
-
-    const boundValue = this.convertToLocalDate(
-      this.context.parameters.boundField
-    );
-    const dateAnchor = this.convertToLocalDate(
-      this.context.parameters.dateAnchor
-    );
+    const boundValue = this.convertToLocalDate(this.context.parameters.boundField);
+    const dateAnchor = this.convertToLocalDate(this.context.parameters.dateAnchor);
 
     const props: TimePickerControlProps = {
       inputValue: boundValue,
@@ -87,6 +80,7 @@ export class TimePicker
       freeform: this.context.parameters.freeform.raw === "1",
       startHour: this.context.parameters.startHour.raw ?? undefined,
       endHour: this.context.parameters.endHour.raw ?? undefined,
+      fluentDesign: this.context.fluentDesignLanguage,
       onTimeChange: (time) => {
         this.outputValue = time;
         this.notifyOutputChanged();
@@ -95,31 +89,15 @@ export class TimePicker
 
     const key = boundValue ? boundValue.getTime() : 0;
 
-    this.root.render(
-      isNewLook
-        ? React.createElement(TimePickerControlNewLook, {
-            key,
-            theme: this.context.fluentDesignLanguage?.tokenTheme,
-            ...props,
-          })
-        : React.createElement(TimePickerControl, {
-            key,
-            ...props,
-          })
-    );
+    this.root.render(React.createElement(TimePickerControl, { key, ...props }));
   }
 
-  public convertToLocalDate(
-    dateProperty: ComponentFramework.PropertyTypes.DateTimeProperty
-  ) {
+  public convertToLocalDate(dateProperty: ComponentFramework.PropertyTypes.DateTimeProperty) {
     if (dateProperty.attributes?.Behavior === 1) {
       // user local
       if (!dateProperty.raw) return null;
 
-      return convertDate(
-        dateProperty.raw,
-        this.context.userSettings.getTimeZoneOffsetMinutes(dateProperty.raw)
-      );
+      return convertDate(dateProperty.raw, this.context.userSettings.getTimeZoneOffsetMinutes(dateProperty.raw));
     } else {
       return getUtcDate(dateProperty.raw);
     }

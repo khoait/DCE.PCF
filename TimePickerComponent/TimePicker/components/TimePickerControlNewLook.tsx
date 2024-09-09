@@ -1,41 +1,16 @@
-import {
-  FluentProvider,
-  Theme,
-  makeStyles,
-  shorthands,
-  tokens,
-} from "@fluentui/react-components";
+import { FluentProvider, Theme, makeStyles, shorthands, tokens } from "@fluentui/react-components";
 import { Clock16Regular } from "@fluentui/react-icons";
-import {
-  TimePicker,
-  TimePickerProps,
-  formatDateToTimeString,
-} from "@fluentui/react-timepicker-compat";
+import { TimePicker, TimePickerProps, formatDateToTimeString } from "@fluentui/react-timepicker-compat";
 import React, { useState } from "react";
 import { TimePickerControlProps } from "../types/typings";
 
 const useStyles = makeStyles({
   root: {
     width: "100%",
-    backgroundColor: tokens.colorNeutralBackground3,
-    ...shorthands.borderColor(tokens.colorTransparentStroke),
-    ":hover": {
-      ...shorthands.borderColor(tokens.colorTransparentStroke),
-    },
-    ":active": {
-      ...shorthands.borderColor(tokens.colorTransparentStroke),
-    },
-    ":focus": {
-      ...shorthands.borderColor(tokens.colorTransparentStroke),
-    },
-    ":focus-within": {
-      ...shorthands.borderColor(tokens.colorTransparentStroke),
-    },
   },
 });
 
 export default function TimePickerControlNewLook({
-  theme,
   inputValue,
   dateAnchor,
   disabled,
@@ -45,13 +20,12 @@ export default function TimePickerControlNewLook({
   increment,
   startHour,
   endHour,
+  fluentDesign,
   onTimeChange,
-}: { theme: Theme } & TimePickerControlProps) {
+}: TimePickerControlProps) {
   const styles = useStyles();
 
-  const [selectedTime, setSelectedTime] = useState<Date | null>(
-    inputValue ?? null
-  );
+  const [selectedTime, setSelectedTime] = useState<Date | null>(inputValue ?? null);
   const [value, setValue] = useState<string>(
     selectedTime
       ? formatDateToTimeString(selectedTime, {
@@ -63,9 +37,7 @@ export default function TimePickerControlNewLook({
 
   const handleTimeChange: TimePickerProps["onTimeChange"] = (_ev, data) => {
     setSelectedTime(data.selectedTime);
-    setValue(
-      data.selectedTime && data.selectedTimeText ? data.selectedTimeText : ""
-    );
+    setValue(data.selectedTime && data.selectedTimeText ? data.selectedTimeText : "");
     if (onTimeChange) {
       onTimeChange(data.selectedTime);
     }
@@ -96,9 +68,11 @@ export default function TimePickerControlNewLook({
   }
 
   return (
-    <FluentProvider theme={theme}>
+    <FluentProvider theme={fluentDesign?.tokenTheme}>
       <TimePicker
         className={styles.root}
+        appearance="filled-darker"
+        clearable
         selectedTime={selectedTime}
         value={value}
         dateAnchor={dateAnchor ?? undefined}

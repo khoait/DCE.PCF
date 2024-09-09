@@ -13,9 +13,9 @@
     "refreshTypes": "pcf-scripts refreshTypes"
   },
   "dependencies": {
-    "@fluentui/react": "^8.117.5",
+    "@fluentui/react": "^8.120.8",
     "@fluentui/react-components": "^9.47.5",
-    "@fluentui/react-timepicker-compat": "^0.2.7",
+    "@fluentui/react-timepicker-compat": "^0.2.30",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
@@ -28,12 +28,14 @@
     "@typescript-eslint/eslint-plugin": "^5.39.0",
     "@typescript-eslint/parser": "^5.39.0",
     "eslint": "^8.24.0",
+    "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^6.0.1",
     "eslint-plugin-react": "^7.34.1",
     "pcf-scripts": "^1",
     "pcf-start": "^1",
+    "prettier": "3.3.3",
     "typescript": "^4.8.4"
   }
 }
