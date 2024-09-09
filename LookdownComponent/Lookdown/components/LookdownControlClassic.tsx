@@ -278,7 +278,7 @@ export default function LookdownControlClassic({
   }, []);
 
   useEffect(() => {
-    const templateVar = getHandlebarsVariables(metadata?.lookupView.fetchxml ?? "" + customFilter ?? "");
+    const templateVar = getHandlebarsVariables((metadata?.lookupView.fetchxml ?? "") + (customFilter ?? ""));
     if (templateVar.length) {
       templateVar.forEach((v) => {
         Xrm.Page.data.entity.attributes.get(v)?.addOnChange(invalidateFetchDataFn);
