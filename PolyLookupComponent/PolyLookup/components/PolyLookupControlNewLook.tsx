@@ -136,6 +136,8 @@ export default function PolyLookupControlNewLook({
     error: errorEntityOptions,
   } = useEntityOptions(metadata, lookupViewConfig, searchText, pageSize);
 
+  const optionList = entityOptions?.filter((option) => !selectedItems?.find((i) => i.id === option.id));
+
   const { mutate: associateQuery } = useAssociateQuery(
     metadata,
     currentRecordId,
@@ -374,8 +376,8 @@ export default function PolyLookupControlNewLook({
           )}
         </TagPickerControl>
         <TagPickerList>
-          {entityOptions?.length && isSuccessEntityOptions
-            ? entityOptions.map((option) => (
+          {optionList?.length && isSuccessEntityOptions
+            ? optionList.map((option) => (
                 <TagPickerOption
                   media={
                     showIcon ? (
