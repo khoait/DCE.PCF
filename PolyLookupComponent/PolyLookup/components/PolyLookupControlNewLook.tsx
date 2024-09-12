@@ -139,8 +139,10 @@ export default function PolyLookupControlNewLook({
     error: errorEntityOptions,
   } = useEntityOptions(metadata, lookupViewConfig, searchText, pageSize);
 
+  const selectedOptions = formType === XrmEnum.FormType.Create ? selectedEntitiesCreate : selectedItems;
+
   const optionList = entityOptions?.filter(
-    (option) => !selectedItems?.some((i) => i.associatedId === option.associatedId)
+    (option) => !selectedOptions?.some((i) => i.associatedId === option.associatedId)
   );
 
   const { mutate: associateQuery } = useAssociateQuery(
@@ -157,7 +159,7 @@ export default function PolyLookupControlNewLook({
     if (isFetchingSelectedItems || !isLoadingSelectedItemsSuccess || !onChange) return;
 
     onChange(
-      selectedItems?.map((i) => {
+      selectedOptions?.map((i) => {
         return {
           id: i.associatedId,
           name: i.associatedName,
@@ -178,8 +180,10 @@ export default function PolyLookupControlNewLook({
     return isError;
   };
 
-  const isDataLoading = (isLoadingMetadata || isLoadingSelectedItems || isLoadingLookupView) && !shouldDisable();
+  const isDataLoading = (isLoadingMetadata || isLoadingLookupView || isLoadingSelectedItems) && !shouldDisable();
   const isError = isErrorMetadata || isErrorLookupView || isErrorSelectedItems;
+  const isSupported =
+    formType === XrmEnum.FormType.Update || (formType === XrmEnum.FormType.Create && outputSelectedItems);
 
   const getPlaceholder = () => {
     if (formType === XrmEnum.FormType.Create) {
@@ -202,7 +206,7 @@ export default function PolyLookupControlNewLook({
       return languagePack.GenericErrorMessage;
     }
 
-    if (selectedItems?.length || disabled) {
+    if (selectedOptions?.length || disabled) {
       return "";
     }
 
@@ -212,7 +216,7 @@ export default function PolyLookupControlNewLook({
   };
 
   const handleOnOptionSelect: TagPickerProps["onOptionSelect"] = (_e, { value, selectedOptions }) => {
-    if (itemLimit && (selectedItems?.length ?? 0) >= itemLimit) {
+    if (itemLimit && (selectedOptions?.length ?? 0) > itemLimit) {
       return;
     }
 
@@ -319,10 +323,10 @@ export default function PolyLookupControlNewLook({
       <TagPicker
         appearance="filled-darker"
         size="medium"
-        selectedOptions={selectedItems?.map((i) => i.id) ?? []}
+        selectedOptions={selectedOptions?.map((i) => i.id) ?? []}
         onOptionSelect={handleOnOptionSelect}
-        disabled={shouldDisable()}
-        noPopover={shouldDisable() || disabled}
+        disabled={!isSupported}
+        noPopover={!isSupported || disabled || (itemLimit !== undefined && (selectedOptions?.length ?? 0) >= itemLimit)}
       >
         <TagPickerControl
           secondaryAction={
@@ -333,54 +337,58 @@ export default function PolyLookupControlNewLook({
             ) : undefined
           }
         >
-          {placeholder ? (
-            <Text>{placeholder}</Text>
-          ) : (
-            <>
-              <TagGroup className={tagGroup} onDismiss={handleOnOptionDismiss}>
-                {(selectedItems ?? selectedEntitiesCreate).map((i) => (
-                  <InteractionTag
-                    key={i.id}
-                    shape="rounded"
-                    size="small"
-                    appearance={tagAction ? "brand" : "outline"}
-                    value={i.id}
-                  >
-                    <InteractionTagPrimary
-                      className={tagAction ? underline : undefined}
-                      hasSecondaryAction={!disabled}
-                      media={
-                        showIcon ? (
-                          <Avatar
-                            className={showIcon === ShowIconOptions.EntityIcon ? marginLeft : undefined}
-                            size={showIcon === ShowIconOptions.EntityIcon ? 16 : 20}
-                            name={i.selectedOptionText}
-                            image={{
-                              src:
-                                showIcon === ShowIconOptions.EntityIcon
-                                  ? metadata?.associatedEntity.EntityIconUrl
-                                  : i.iconSrc,
-                            }}
-                            color={showIcon === ShowIconOptions.EntityIcon ? "neutral" : "colorful"}
-                            aria-hidden
-                          />
-                        ) : undefined
-                      }
-                      onClick={() => handleOnItemClick(i)}
-                    >
-                      {i.selectedOptionText}
-                    </InteractionTagPrimary>
-                    {disabled ? null : <InteractionTagSecondary className={borderTransparent} aria-label="remove" />}
-                  </InteractionTag>
-                ))}
-              </TagGroup>
-              {disabled || (itemLimit && (selectedItems?.length ?? 0) >= itemLimit) ? null : (
-                <TagPickerInput value={searchText} onChange={(e) => setSearchText(e.target.value)} />
-              )}
-            </>
-          )}
+          <TagGroup className={tagGroup} onDismiss={handleOnOptionDismiss}>
+            {selectedOptions?.map((i) => (
+              <InteractionTag
+                key={i.id}
+                shape="rounded"
+                size="small"
+                appearance={tagAction ? "brand" : "outline"}
+                value={i.id}
+              >
+                <InteractionTagPrimary
+                  className={tagAction ? underline : undefined}
+                  hasSecondaryAction={!disabled}
+                  media={
+                    showIcon ? (
+                      <Avatar
+                        className={showIcon === ShowIconOptions.EntityIcon ? marginLeft : undefined}
+                        size={showIcon === ShowIconOptions.EntityIcon ? 16 : 20}
+                        name={i.selectedOptionText}
+                        image={{
+                          src:
+                            showIcon === ShowIconOptions.EntityIcon
+                              ? metadata?.associatedEntity.EntityIconUrl
+                              : i.iconSrc,
+                        }}
+                        color={showIcon === ShowIconOptions.EntityIcon ? "neutral" : "colorful"}
+                        aria-hidden
+                      />
+                    ) : undefined
+                  }
+                  onClick={() => handleOnItemClick(i)}
+                >
+                  {i.selectedOptionText}
+                </InteractionTagPrimary>
+                {disabled ? null : <InteractionTagSecondary className={borderTransparent} aria-label="remove" />}
+              </InteractionTag>
+            ))}
+          </TagGroup>
+
+          <TagPickerInput
+            placeholder={placeholder}
+            value={searchText}
+            disabled={
+              disabled ||
+              isDataLoading ||
+              isError ||
+              !isSupported ||
+              (itemLimit !== undefined && (selectedOptions?.length ?? 0) >= itemLimit)
+            }
+            onChange={(e) => setSearchText(e.target.value)}
+          />
         </TagPickerControl>
-        {disabled || (itemLimit && (selectedItems?.length ?? 0) >= itemLimit) ? (
+        {disabled || !isSupported || (itemLimit !== undefined && (selectedOptions?.length ?? 0) >= itemLimit) ? (
           <></>
         ) : (
           <TagPickerList className={listBox}>
