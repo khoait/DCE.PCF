@@ -169,18 +169,7 @@ export default function PolyLookupControlNewLook({
     );
   }, [isFetchingSelectedItems, isLoadingSelectedItemsSuccess, onChange]);
 
-  const shouldDisable = () => {
-    if (formType === XrmEnum.FormType.Create) {
-      if (!outputSelectedItems) {
-        return true;
-      }
-    } else if (formType !== XrmEnum.FormType.Update) {
-      return true;
-    }
-    return isError;
-  };
-
-  const isDataLoading = (isLoadingMetadata || isLoadingLookupView || isLoadingSelectedItems) && !shouldDisable();
+  const isDataLoading = isLoadingMetadata || isLoadingLookupView || isLoadingSelectedItems;
   const isError = isErrorMetadata || isErrorLookupView || isErrorSelectedItems;
   const isSupported =
     formType === XrmEnum.FormType.Update ||
