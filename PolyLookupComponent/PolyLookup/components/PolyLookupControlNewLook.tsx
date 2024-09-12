@@ -55,6 +55,9 @@ const useStyle = makeStyles({
   borderTransparent: {
     borderLeftColor: "transparent",
   },
+  listBox: {
+    maxHeight: "50vh",
+  },
 });
 
 export default function PolyLookupControlNewLook({
@@ -79,7 +82,7 @@ export default function PolyLookupControlNewLook({
   onQuickCreate,
 }: PolyLookupProps) {
   const queryClient = useQueryClient();
-  const { tagGroup, marginLeft, underline, borderTransparent } = useStyle();
+  const { tagGroup, marginLeft, underline, borderTransparent, listBox } = useStyle();
 
   const [searchText, setSearchText] = useState<string>("");
 
@@ -380,7 +383,7 @@ export default function PolyLookupControlNewLook({
         {disabled || (itemLimit && (selectedItems?.length ?? 0) >= itemLimit) ? (
           <></>
         ) : (
-          <TagPickerList>
+          <TagPickerList className={listBox}>
             {optionList?.length && isSuccessEntityOptions
               ? optionList.map((option) => (
                   <TagPickerOption
