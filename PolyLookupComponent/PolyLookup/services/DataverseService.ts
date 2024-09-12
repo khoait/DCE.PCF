@@ -85,16 +85,12 @@ export function useSelectedItems(
   return useQuery({
     queryKey: ["selectedItems", metadata, currentRecordId, formType],
     queryFn: () => {
-      if (!metadata || !currentRecordId) return Promise.resolve([]);
+      if (!metadata || !currentRecordId || formType === XrmEnum.FormType.Create) {
+        return [];
+      }
       return retrieveAssociatedRecords(metadata, currentRecordId);
     },
-    enabled:
-      !!currentRecordId &&
-      !!metadata?.intersectEntity.EntitySetName &&
-      !!metadata?.associatedEntity.EntitySetName &&
-      (formType === XrmEnum.FormType.Update ||
-        formType === XrmEnum.FormType.ReadOnly ||
-        formType === XrmEnum.FormType.Disabled),
+    enabled: !!metadata?.intersectEntity.EntitySetName && !!metadata?.associatedEntity.EntitySetName,
   });
 }
 
