@@ -183,7 +183,10 @@ export default function PolyLookupControlNewLook({
   const isDataLoading = (isLoadingMetadata || isLoadingLookupView || isLoadingSelectedItems) && !shouldDisable();
   const isError = isErrorMetadata || isErrorLookupView || isErrorSelectedItems;
   const isSupported =
-    formType === XrmEnum.FormType.Update || (formType === XrmEnum.FormType.Create && outputSelectedItems);
+    formType === XrmEnum.FormType.Update ||
+    XrmEnum.FormType.ReadOnly ||
+    XrmEnum.FormType.Disabled ||
+    (formType === XrmEnum.FormType.Create && outputSelectedItems);
 
   const getPlaceholder = () => {
     if (formType === XrmEnum.FormType.Create) {
