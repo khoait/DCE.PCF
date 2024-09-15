@@ -62,13 +62,15 @@ export function getCustomFilterString(customFilter: string) {
 export function getHandlebarsVariables(input: string): string[] {
   const ast = Handlebars.parseWithoutProcessing(input);
 
-  return ast.body
+  const hbVars = ast.body
     .filter(({ type }: hbs.AST.Statement) => type === "MustacheStatement")
     .map((statement: hbs.AST.Statement) => {
       const moustacheStatement: hbs.AST.MustacheStatement = statement as hbs.AST.MustacheStatement;
       const paramsExpressionList = moustacheStatement.params as hbs.AST.PathExpression[];
       const pathExpression = moustacheStatement.path as hbs.AST.PathExpression;
-
-      return paramsExpressionList[0]?.original || pathExpression.original;
+      const original = paramsExpressionList[0]?.original || pathExpression.original;
+      return original.split(".")[0];
     });
+
+  return Array.from(new Set(hbVars));
 }

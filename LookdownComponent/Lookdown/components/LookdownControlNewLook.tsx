@@ -23,6 +23,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { useEntityOptions, useLanguagePack, useMetadata } from "../services/DataverseService";
 import { getCustomFilterString, getHandlebarsVariables } from "../services/TemplateService";
 import { EntityOption, LookdownControlProps, OpenRecordMode } from "../types/typings";
+import { useAttributeOnChange } from "../hooks/useAttributeOnChange";
 
 const useStyle = makeStyles({
   root: {
@@ -101,6 +102,8 @@ export default function LookdownControlNewLook({
     iconSize
   );
 
+  useAttributeOnChange(metadata, customFilter);
+
   const isError = isErrorLanguagePack || isErrorMetadata || isErrorEntityOptions;
 
   useEffect(() => {
@@ -117,27 +120,6 @@ export default function LookdownControlNewLook({
     setSelectedValues([]);
     setSelectedDisplayText(selectedText ?? "");
   }, [selectedId, selectedText, entityOptions]);
-
-  const invalidateFetchDataFn = useCallback((context) => {
-    queryClient.invalidateQueries({ queryKey: ["entityRecords"] });
-  }, []);
-
-  useEffect(() => {
-    const templateVar = getHandlebarsVariables((metadata?.lookupView.fetchxml ?? "") + (customFilter ?? ""));
-    if (templateVar.length) {
-      templateVar.forEach((v) => {
-        Xrm.Page.data.entity.attributes.get(v)?.addOnChange(invalidateFetchDataFn);
-      });
-    }
-
-    // TODO: not sure why this is not working
-    // return () => {
-    //   console.log("cleanup");
-    //   templateVar.forEach((v) => {
-    //     Xrm.Page.data.entity.attributes.get(v)?.removeOnChange(invalidateFetchDataFn);
-    //   });
-    // };
-  }, [metadata?.lookupView.fetchxml, customFilter]);
 
   const getSelectedOptionDisplay = () => {
     const selectedOption = entityOptions?.find((item) => item.id === selectedValues.at(0) ?? "");
