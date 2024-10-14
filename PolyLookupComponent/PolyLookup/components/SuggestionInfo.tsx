@@ -1,6 +1,6 @@
-import React from "react";
-import { IconButton, ILabelStyles, IStyle, Label, Stack, Text } from "@fluentui/react";
+import { IconButton, ILabelStyles, IStyle, Stack, Text } from "@fluentui/react";
 import { useBoolean } from "@fluentui/react-hooks";
+import React from "react";
 import { EntityOption } from "../types/typings";
 
 export interface ISuggestionInfoProps {
@@ -28,11 +28,12 @@ export const SuggestionInfo = ({ data, columns }: ISuggestionInfoProps) => {
 
   const infoMap = new Map<string, string>();
   columns.forEach((column) => {
-    let displayValue = data.entity[column + "@OData.Community.Display.V1.FormattedValue"];
-    if (!displayValue) {
-      displayValue = data.entity[column];
-    }
-    infoMap.set(column, displayValue ?? "");
+    const formattedValue1 = data.entity[`_${column}_value@OData.Community.Display.V1.FormattedValue`];
+    const formattedValue2 = data.entity[`${column}@OData.Community.Display.V1.FormattedValue`];
+
+    const displayValue = formattedValue1 ?? formattedValue2 ?? data.entity[column] ?? "";
+
+    infoMap.set(column, displayValue);
   });
 
   return (

@@ -289,10 +289,7 @@ async function retrieveMultipleFetch(entitySetName: string, fetchXml: string, gr
       res.data.value.forEach((record) => {
         Object.keys(record).forEach((key) => {
           if (!key.endsWith("@OData.Community.Display.V1.FormattedValue")) {
-            const formattedValue = record[key + "@OData.Community.Display.V1.FormattedValue"];
-            if (formattedValue && formattedValue !== "") {
-              record[key] = formattedValue;
-            }
+            record[key] = getAttributeFormattedValue(record, key);
           }
         });
       });
@@ -327,11 +324,10 @@ export function getCurrentRecord(): ComponentFramework.WebApi.Entity | null {
 export function getAttributeFormattedValue(entity: ComponentFramework.WebApi.Entity, attributeName: string): string {
   if (!entity) return "";
 
-  let formattedValue = entity[attributeName + "@OData.Community.Display.V1.FormattedValue"];
+  const formattedValue1 = entity[`_${attributeName}_value@OData.Community.Display.V1.FormattedValue`];
+  const formattedValue2 = entity[`${attributeName}@OData.Community.Display.V1.FormattedValue`];
 
-  if (!formattedValue) {
-    formattedValue = entity[attributeName];
-  }
+  const displayValue = formattedValue1 ?? formattedValue2 ?? entity[attributeName] ?? "";
 
-  return formattedValue;
+  return displayValue;
 }
