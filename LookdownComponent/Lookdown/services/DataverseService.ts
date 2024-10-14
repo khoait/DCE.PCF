@@ -278,7 +278,11 @@ async function retrieveMultipleFetch(entitySetName: string, fetchXml: string, gr
   return axios
     .get<{ value: ComponentFramework.WebApi.Entity[] }>(`/api/data/v${apiVersion}/${entitySetName}`, {
       headers: {
-        Prefer: "odata.include-annotations=OData.Community.Display.V1.FormattedValue",
+        "OData-MaxVersion": "4.0",
+        "OData-Version": "4.0",
+        Accept: "application/json",
+        Prefer:
+          'odata.include-annotations="OData.Community.Display.V1.FormattedValue,Microsoft.Dynamics.CRM.associatednavigationproperty,Microsoft.Dynamics.CRM.lookuplogicalname"',
       },
       params: {
         fetchXml: encodeURIComponent(newFetchXml),
