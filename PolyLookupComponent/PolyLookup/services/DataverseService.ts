@@ -53,6 +53,15 @@ const viewDefinitionColumns = ["savedqueryid", "name", "fetchxml", "layoutjson",
 
 const apiVersion = "9.2";
 
+const DEFAULT_HEADERS = {
+  "OData-MaxVersion": "4.0",
+  "OData-Version": "4.0",
+  Accept: "application/json",
+  "Content-Type": "application/json; charset=utf-8",
+  Prefer:
+    'odata.include-annotations="OData.Community.Display.V1.FormattedValue,Microsoft.Dynamics.CRM.associatednavigationproperty,Microsoft.Dynamics.CRM.lookuplogicalname"',
+};
+
 const parser = new DOMParser();
 const serializer = new XMLSerializer();
 
@@ -290,7 +299,9 @@ function getLanguagePack(webResourceUrl: string | undefined, defaultLanguagePack
   if (webResourceUrl === undefined) return Promise.resolve(languagePack);
 
   return axios
-    .get(webResourceUrl)
+    .get(webResourceUrl, {
+      headers: DEFAULT_HEADERS,
+    })
     .then((res) => {
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(res.data, "text/xml");
@@ -320,6 +331,7 @@ export function getManytoManyRelationShipDefinition(
         .get<IManyToManyRelationship>(
           `/api/data/v${apiVersion}/EntityDefinitions(LogicalName='${currentTable}')/ManyToManyRelationships(SchemaName='${relationshipName}')`,
           {
+            headers: DEFAULT_HEADERS,
             params: {
               $select: nToNColumns.join(","),
             },
@@ -338,6 +350,7 @@ export function getOnetoManyRelationShipDefinition(
         .get<IOneToManyRelationship>(
           `/api/data/v${apiVersion}/EntityDefinitions(LogicalName='${currentTable}')/OneToManyRelationships(SchemaName='${relationshipName}')`,
           {
+            headers: DEFAULT_HEADERS,
             params: {
               $select: oneToNColumns.join(","),
             },
@@ -356,6 +369,7 @@ export function getManytoOneRelationShipDefinition(
         .get<{ value: IOneToManyRelationship[] }>(
           `/api/data/v${apiVersion}/RelationshipDefinitions/Microsoft.Dynamics.CRM.OneToManyRelationshipMetadata`,
           {
+            headers: DEFAULT_HEADERS,
             params: {
               $select: oneToNColumns.join(","),
               $filter: `SchemaName eq '${relationshipName}' and ReferencingEntity eq '${currentTable}'`,
@@ -370,6 +384,7 @@ export function getEntityDefinition(entityName: string | undefined) {
     ? Promise.reject(new Error("Invalid entity name"))
     : axios
         .get<IEntityDefinition>(`/api/data/v${apiVersion}/EntityDefinitions(LogicalName='${entityName}')`, {
+          headers: DEFAULT_HEADERS,
           params: {
             $select: tableDefinitionColumns.join(","),
           },
@@ -395,6 +410,7 @@ export async function getViewDefinition(
   if (typeof entityName === "undefined") return Promise.reject(new Error("Invalid arguments"));
 
   const result = await axios.get<{ value: IViewDefinition[] }>(`/api/data/v${apiVersion}/savedqueries`, {
+    headers: DEFAULT_HEADERS,
     params: {
       $filter: `returnedtypecode eq '${entityName}' ${viewName ? `and name eq '${viewName}'` : ""} ${
         queryType ? `and querytype eq ${queryType}` : ""
@@ -538,7 +554,9 @@ async function getLookupViewConfig(
         : `/api/data/v${apiVersion}/${lookupViewVal}`;
 
     try {
-      const { data } = await axios.get<{ value?: unknown }>(url);
+      const { data } = await axios.get<{ value?: unknown }>(url, {
+        headers: DEFAULT_HEADERS,
+      });
 
       if (typeof data.value === "string") {
         lookupViewConfig.fetchXml = data.value;
@@ -704,13 +722,7 @@ export async function retrieveMultipleFetch(
     const { data } = await axios.get<{ value: ComponentFramework.WebApi.Entity[] }>(
       `/api/data/v${apiVersion}/${entitySetName}`,
       {
-        headers: {
-          "OData-MaxVersion": "4.0",
-          "OData-Version": "4.0",
-          Accept: "application/json",
-          Prefer:
-            'odata.include-annotations="OData.Community.Display.V1.FormattedValue,Microsoft.Dynamics.CRM.associatednavigationproperty,Microsoft.Dynamics.CRM.lookuplogicalname"',
-        },
+        headers: DEFAULT_HEADERS,
         params: {
           fetchXml: encodeURIComponent(newFetchXml),
         },
@@ -810,13 +822,7 @@ export function associateRecord(
         .replace("}", "")})`,
     },
     {
-      headers: {
-        "OData-MaxVersion": "4.0",
-        "OData-Version": "4.0",
-        "If-None-Match": null,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
+      headers: DEFAULT_HEADERS,
     }
   );
 }
@@ -839,13 +845,7 @@ export function disassociateRecord(
   return axios.delete(
     `/api/data/v${apiVersion}/${entitySetName}(${currentRecordId})/${relationshipName}(${associatedRecordId})/$ref`,
     {
-      headers: {
-        "OData-MaxVersion": "4.0",
-        "OData-Version": "4.0",
-        "If-Match": null,
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
+      headers: DEFAULT_HEADERS,
     }
   );
 }
@@ -854,12 +854,7 @@ export function createRecord(entitySetName: string | undefined, record: Componen
   if (typeof entitySetName === "undefined") return Promise.reject(new Error("Invalid entity set name"));
 
   return axios.post(`/api/data/v${apiVersion}/${entitySetName}`, record, {
-    headers: {
-      "OData-MaxVersion": "4.0",
-      "OData-Version": "4.0",
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
+    headers: DEFAULT_HEADERS,
   });
 }
 
@@ -868,13 +863,7 @@ export function deleteRecord(entitySetName: string | undefined, recordId: string
     return Promise.reject(new Error("Invalid arguments"));
 
   return axios.delete(`/api/data/v${apiVersion}/${entitySetName}(${recordId})`, {
-    headers: {
-      "OData-MaxVersion": "4.0",
-      "OData-Version": "4.0",
-      "If-Match": null,
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
+    headers: DEFAULT_HEADERS,
   });
 }
 
@@ -907,22 +896,21 @@ export function getCurrentRecord(attributes?: string[]): ComponentFramework.WebA
 async function getEnvironmentVariableValue(environmentVariableName: string) {
   try {
     const { data: evDef } = await axios.get<{
-      value: { environmentvariabledefinitionid: string; defaultvalue?: string }[];
+      value: {
+        defaultvalue?: string | null;
+        environmentvariabledefinition_environmentvariablevalue: { value?: string | null }[];
+      }[];
     }>(
-      `/api/data/v${apiVersion}/environmentvariabledefinitions?$filter=schemaname eq '${environmentVariableName}' or displayname eq '${environmentVariableName}' &$select=environmentvariabledefinitionid,defaultvalue&$top=1`
+      `/api/data/v${apiVersion}/environmentvariabledefinitions?$select=environmentvariabledefinitionid,defaultvalue&$filter=schemaname eq '${environmentVariableName}'&$top=1&$expand=environmentvariabledefinition_environmentvariablevalue($select=value)`,
+      {
+        headers: DEFAULT_HEADERS,
+      }
     );
 
-    // environment variable not found
-    if (evDef.value.length === 0) return null;
-
-    const defaultValue = evDef.value[0].defaultvalue ?? "";
-
-    // get environment variable value
-    const { data: evValue } = await axios.get<{ value: { value: string }[] }>(
-      `/api/data/v${apiVersion}/environmentvariablevalues?$filter=_environmentvariabledefinitionid_value eq '${evDef.value[0].environmentvariabledefinitionid}'&$select=value&$top=1`
-    );
-
-    return evValue?.value.at(0)?.value ?? defaultValue;
+    const defaultValue = evDef?.value.at(0)?.defaultvalue ?? null;
+    const currentValue =
+      evDef?.value.at(0)?.environmentvariabledefinition_environmentvariablevalue?.at(0)?.value ?? null;
+    return currentValue ?? defaultValue;
   } catch (error) {
     return null;
   }

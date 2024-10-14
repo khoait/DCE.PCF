@@ -24,6 +24,15 @@ const viewDefinitionColumns = ["savedqueryid", "name", "fetchxml", "layoutjson",
 
 const apiVersion = "9.2";
 
+const DEFAULT_HEADERS = {
+  "OData-MaxVersion": "4.0",
+  "OData-Version": "4.0",
+  Accept: "application/json",
+  "Content-Type": "application/json; charset=utf-8",
+  Prefer:
+    'odata.include-annotations="OData.Community.Display.V1.FormattedValue,Microsoft.Dynamics.CRM.associatednavigationproperty,Microsoft.Dynamics.CRM.lookuplogicalname"',
+};
+
 export function useMetadata(lookupTable: string, lookupViewId: string) {
   return useQuery({
     queryKey: ["metadata", lookupTable, lookupViewId],
@@ -109,7 +118,9 @@ export function getLanguagePack(
   if (webResourceUrl === undefined) return Promise.resolve(languagePack);
 
   return axios
-    .get(webResourceUrl)
+    .get(webResourceUrl, {
+      headers: DEFAULT_HEADERS,
+    })
     .then((res) => {
       const parser = new DOMParser();
       const xmlDoc = parser.parseFromString(res.data, "text/xml");
@@ -146,6 +157,7 @@ async function getEntityDefinition(entityName: string): Promise<IEntityDefinitio
     ? Promise.reject(new Error("Invalid entity name"))
     : axios
         .get<IEntityDefinition>(`/api/data/v${apiVersion}/EntityDefinitions(LogicalName='${entityName}')`, {
+          headers: DEFAULT_HEADERS,
           params: {
             $select: tableDefinitionColumns.join(","),
           },
@@ -179,6 +191,7 @@ async function getViewDefinition(entityName: string, viewId?: string | null): Pr
   let view;
   if (viewId) {
     const result = await axios.get<{ value: IViewDefinition[] }>(`/api/data/v${apiVersion}/savedqueries`, {
+      headers: DEFAULT_HEADERS,
       params: {
         $filter: `savedqueryid eq '${viewId}'`,
         $select: viewDefinitionColumns.join(","),
@@ -205,6 +218,7 @@ export async function getLookupViewDefinition(entityName: string) {
   if (!entityName) return Promise.reject(new Error("Invalid entity name"));
 
   const result = await axios.get<{ value: IViewDefinition[] }>(`/api/data/v${apiVersion}/savedqueries`, {
+    headers: DEFAULT_HEADERS,
     params: {
       $filter: `returnedtypecode eq '${entityName}' and querytype eq 64`,
       $select: viewDefinitionColumns.join(","),
@@ -277,9 +291,7 @@ async function retrieveMultipleFetch(entitySetName: string, fetchXml: string, gr
 
   return axios
     .get<{ value: ComponentFramework.WebApi.Entity[] }>(`/api/data/v${apiVersion}/${entitySetName}`, {
-      headers: {
-        Prefer: "odata.include-annotations=OData.Community.Display.V1.FormattedValue",
-      },
+      headers: DEFAULT_HEADERS,
       params: {
         fetchXml: encodeURIComponent(newFetchXml),
       },
@@ -289,10 +301,7 @@ async function retrieveMultipleFetch(entitySetName: string, fetchXml: string, gr
       res.data.value.forEach((record) => {
         Object.keys(record).forEach((key) => {
           if (!key.endsWith("@OData.Community.Display.V1.FormattedValue")) {
-            const formattedValue = record[key + "@OData.Community.Display.V1.FormattedValue"];
-            if (formattedValue && formattedValue !== "") {
-              record[key] = formattedValue;
-            }
+            record[key] = getAttributeFormattedValue(record, key);
           }
         });
       });
@@ -327,11 +336,10 @@ export function getCurrentRecord(): ComponentFramework.WebApi.Entity | null {
 export function getAttributeFormattedValue(entity: ComponentFramework.WebApi.Entity, attributeName: string): string {
   if (!entity) return "";
 
-  let formattedValue = entity[attributeName + "@OData.Community.Display.V1.FormattedValue"];
+  const formattedValue1 = entity[`_${attributeName}_value@OData.Community.Display.V1.FormattedValue`];
+  const formattedValue2 = entity[`${attributeName}@OData.Community.Display.V1.FormattedValue`];
 
-  if (!formattedValue) {
-    formattedValue = entity[attributeName];
-  }
+  const displayValue = formattedValue1 ?? formattedValue2 ?? entity[attributeName] ?? "";
 
-  return formattedValue;
+  return displayValue;
 }
