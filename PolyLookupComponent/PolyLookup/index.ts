@@ -166,23 +166,15 @@ export class PolyLookup implements ComponentFramework.StandardControl<IInputs, I
     if (entityName && primaryAttribute) {
       let result: ComponentFramework.NavigationApi.OpenFormSuccessResponse;
       if (useQuickCreateForm) {
-        result = await this.context.navigation.openForm(
-          {
-            entityName: entityName,
-            useQuickCreateForm: true,
-          },
-          {
-            [primaryAttribute]: value ?? "",
-          }
-        );
+        result = await this.context.navigation.openForm({
+          entityName: entityName,
+          useQuickCreateForm: true,
+        });
       } else {
         result = await this.context.navigation.navigateTo(
           {
             pageType: "entityrecord",
             entityName: entityName,
-            data: {
-              [primaryAttribute]: value ?? "",
-            },
           },
           {
             target: 2,
