@@ -38,6 +38,7 @@ import {
 } from "../types/typings";
 import { sprintf } from "sprintf-js";
 import { SuggestionInfo } from "./SuggestionInfo";
+import { useAttributeOnChange } from "../hooks/useAttributeOnChange";
 
 const useStyle = makeStyles({
   tagGroup: {
@@ -154,6 +155,8 @@ export default function PolyLookupControlNewLook({
   );
 
   const { mutate: disassociateQuery } = useDisassociateQuery(metadata, currentRecordId, relationshipType, languagePack);
+
+  useAttributeOnChange(lookupViewConfig?.fetchXml ?? "");
 
   useEffect(() => {
     if (isFetchingSelectedItems || !isLoadingSelectedItemsSuccess || !onChange) return;

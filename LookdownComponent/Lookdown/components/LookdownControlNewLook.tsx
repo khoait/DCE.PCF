@@ -122,7 +122,7 @@ export default function LookdownControlNewLook({
   }, [selectedId, selectedText, entityOptions]);
 
   const getSelectedOptionDisplay = () => {
-    const selectedOption = entityOptions?.find((item) => item.id === selectedValues.at(0) ?? "");
+    const selectedOption = entityOptions?.find((item) => item.id === selectedValues.at(0));
     if (!selectedOption) return <span>---</span>;
     return (
       <OptionDisplay
