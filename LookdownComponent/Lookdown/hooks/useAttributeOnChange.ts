@@ -13,7 +13,7 @@ export function useAttributeOnChange(metadata: IMetadata | undefined, customFilt
     const templateVar = getHandlebarsVariables((metadata?.lookupView.fetchxml ?? "") + (customFilter ?? ""));
     if (templateVar.length) {
       templateVar.forEach((v) => {
-        Xrm.Page.data.entity.attributes.get(v)?.addOnChange(invalidateFetchDataFn);
+        Xrm.Page.getAttribute(v)?.addOnChange(invalidateFetchDataFn);
       });
     }
 
