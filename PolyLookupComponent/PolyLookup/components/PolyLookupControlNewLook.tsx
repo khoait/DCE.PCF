@@ -16,6 +16,7 @@ import {
   tokens,
   Text,
   Button,
+  mergeClasses,
 } from "@fluentui/react-components";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useState } from "react";
@@ -59,6 +60,12 @@ const useStyle = makeStyles({
   listBox: {
     maxHeight: "50vh",
   },
+  tagFontSize: {
+    fontSize: tokens.fontSizeBase300,
+  },
+  iconFontSize: {
+    fontSize: tokens.fontSizeBase200,
+  },
 });
 
 export default function PolyLookupControlNewLook({
@@ -83,7 +90,10 @@ export default function PolyLookupControlNewLook({
   onQuickCreate,
 }: PolyLookupProps) {
   const queryClient = useQueryClient();
-  const { tagGroup, marginLeft, underline, borderTransparent, listBox } = useStyle();
+  const { tagGroup, marginLeft, underline, borderTransparent, listBox, tagFontSize, iconFontSize } = useStyle();
+
+  const tagStyle = mergeClasses(!!tagAction && underline);
+  const iconStyle = mergeClasses(borderTransparent, iconFontSize);
 
   const [searchText, setSearchText] = useState<string>("");
 
@@ -342,7 +352,7 @@ export default function PolyLookupControlNewLook({
                 value={i.id}
               >
                 <InteractionTagPrimary
-                  className={tagAction ? underline : undefined}
+                  className={tagStyle}
                   hasSecondaryAction={!disabled}
                   media={
                     showIcon ? (
@@ -363,9 +373,9 @@ export default function PolyLookupControlNewLook({
                   }
                   onClick={() => handleOnItemClick(i)}
                 >
-                  {i.selectedOptionText}
+                  <span className={tagFontSize}>{i.selectedOptionText}</span>
                 </InteractionTagPrimary>
-                {disabled ? null : <InteractionTagSecondary className={borderTransparent} aria-label="remove" />}
+                {disabled ? null : <InteractionTagSecondary className={iconStyle} aria-label="remove" />}
               </InteractionTag>
             ))}
           </TagGroup>
