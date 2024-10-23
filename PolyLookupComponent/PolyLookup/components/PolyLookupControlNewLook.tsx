@@ -66,6 +66,9 @@ const useStyle = makeStyles({
   iconFontSize: {
     fontSize: tokens.fontSizeBase200,
   },
+  transparentBackground: {
+    backgroundColor: tokens.colorTransparentBackground,
+  },
 });
 
 export default function PolyLookupControlNewLook({
@@ -90,10 +93,23 @@ export default function PolyLookupControlNewLook({
   onQuickCreate,
 }: PolyLookupProps) {
   const queryClient = useQueryClient();
-  const { tagGroup, marginLeft, underline, borderTransparent, listBox, tagFontSize, iconFontSize } = useStyle();
+  const {
+    tagGroup,
+    marginLeft,
+    underline,
+    borderTransparent,
+    listBox,
+    tagFontSize,
+    iconFontSize,
+    transparentBackground,
+  } = useStyle();
 
   const tagStyle = mergeClasses(!!tagAction && underline);
   const iconStyle = mergeClasses(borderTransparent, iconFontSize);
+  const imageStyle = mergeClasses(
+    showIcon === ShowIconOptions.EntityIcon && marginLeft,
+    showIcon === ShowIconOptions.EntityIcon && transparentBackground
+  );
 
   const [searchText, setSearchText] = useState<string>("");
 
@@ -357,10 +373,11 @@ export default function PolyLookupControlNewLook({
                   media={
                     showIcon ? (
                       <Avatar
-                        className={showIcon === ShowIconOptions.EntityIcon ? marginLeft : undefined}
+                        className={imageStyle}
                         size={showIcon === ShowIconOptions.EntityIcon ? 16 : 20}
-                        name={i.selectedOptionText}
+                        name={showIcon === ShowIconOptions.EntityIcon ? "" : i.selectedOptionText}
                         image={{
+                          className: transparentBackground,
                           src:
                             showIcon === ShowIconOptions.EntityIcon
                               ? metadata?.associatedEntity.EntityIconUrl
@@ -403,10 +420,12 @@ export default function PolyLookupControlNewLook({
                     media={
                       showIcon ? (
                         <Avatar
+                          className={transparentBackground}
                           size={showIcon === ShowIconOptions.EntityIcon ? 16 : 28}
                           shape="square"
-                          name={option.optionText}
+                          name={showIcon === ShowIconOptions.EntityIcon ? "" : option.optionText}
                           image={{
+                            className: transparentBackground,
                             src:
                               showIcon === ShowIconOptions.EntityIcon
                                 ? metadata?.associatedEntity.EntityIconUrl
