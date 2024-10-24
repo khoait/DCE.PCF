@@ -260,6 +260,8 @@ export default function PolyLookupControlNewLook({
     } else if (formType === XrmEnum.FormType.Update) {
       associateQuery(value);
     }
+
+    setSearchText("");
   };
 
   const handleOnOptionDismiss: TagGroupProps["onDismiss"] = (_e, { value }) => {
