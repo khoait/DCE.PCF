@@ -153,7 +153,7 @@ export default function PolyLookupControlClassic({
     async (filterText: string, selectedTags?: ITag[]): Promise<ITag[]> => {
       try {
         const results = await filterQueryAsync({ searchText: filterText, pageSizeParam: pageSize });
-        const options = results.filter(
+        const options = results.records.filter(
           (r) =>
             !selectedTags?.some((t) => {
               const data = (t as ITagWithData).data;
@@ -176,7 +176,7 @@ export default function PolyLookupControlClassic({
           searchText: filterText,
           pageSizeParam: (pageSize ?? 50) * 2 + 1,
         });
-        const options = results.filter(
+        const options = results.records.filter(
           (r) =>
             !selectedTags?.some((t) => {
               const data = (t as ITagWithData).data;
@@ -196,7 +196,7 @@ export default function PolyLookupControlClassic({
     async (selectedTags?: ITag[]): Promise<ITag[]> => {
       try {
         const results = await filterQueryAsync({ searchText: "", pageSizeParam: pageSize });
-        const options = results.filter(
+        const options = results.records.filter(
           (r) =>
             !selectedTags?.some((t) => {
               const data = (t as ITagWithData).data;
