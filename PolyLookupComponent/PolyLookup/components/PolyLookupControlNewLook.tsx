@@ -17,6 +17,7 @@ import {
   Text,
   Button,
   mergeClasses,
+  Divider,
 } from "@fluentui/react-components";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useState } from "react";
@@ -59,6 +60,12 @@ const useStyle = makeStyles({
   },
   listBox: {
     maxHeight: "50vh",
+    overflowX: "hidden",
+    overflowY: "auto",
+    padding: tokens.spacingVerticalXS,
+  },
+  optionListFooter: {
+    padding: tokens.spacingVerticalS,
   },
   tagFontSize: {
     fontSize: tokens.fontSizeBase300,
@@ -99,6 +106,7 @@ export default function PolyLookupControlNewLook({
     underline,
     borderTransparent,
     listBox,
+    optionListFooter,
     tagFontSize,
     iconFontSize,
     transparentBackground,
@@ -168,7 +176,7 @@ export default function PolyLookupControlNewLook({
 
   const selectedOptions = formType === XrmEnum.FormType.Create ? selectedEntitiesCreate : selectedItems;
 
-  const optionList = entityOptions?.filter(
+  const optionList = entityOptions?.records.filter(
     (option) => !selectedOptions?.some((i) => i.associatedId === option.associatedId)
   );
 
@@ -242,7 +250,7 @@ export default function PolyLookupControlNewLook({
     }
 
     if (formType === XrmEnum.FormType.Create) {
-      const selectedEntity = entityOptions?.find((i) => i.id === value);
+      const selectedEntity = entityOptions?.records.find((i) => i.id === value);
       if (!selectedEntity) {
         return;
       }
@@ -341,6 +349,57 @@ export default function PolyLookupControlNewLook({
 
   const placeholder = getPlaceholder();
 
+  const renderOptionList = () => {
+    if (!optionList?.length) {
+      return (
+        <div className={optionListFooter}>
+          <Text>{isLoadingEntityOptions ? languagePack.LoadingMessage : languagePack.EmptyListDefaultMessage}</Text>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <div className={listBox}>
+          {optionList?.map((option) => (
+            <TagPickerOption
+              media={
+                showIcon ? (
+                  <Avatar
+                    className={transparentBackground}
+                    size={showIcon === ShowIconOptions.EntityIcon ? 16 : 28}
+                    shape="square"
+                    name={showIcon === ShowIconOptions.EntityIcon ? "" : option.optionText}
+                    image={{
+                      className: transparentBackground,
+                      src:
+                        showIcon === ShowIconOptions.EntityIcon
+                          ? metadata?.associatedEntity.EntityIconUrl
+                          : option.iconSrc,
+                    }}
+                    color={showIcon === ShowIconOptions.EntityIcon ? "neutral" : "colorful"}
+                    aria-hidden
+                  />
+                ) : undefined
+              }
+              key={option.id}
+              value={option.id}
+              text={option.optionText}
+            >
+              <SuggestionInfo data={option} columns={lookupViewConfig?.columns ?? []} />
+            </TagPickerOption>
+          ))}
+        </div>
+        <Divider />
+        <div className={optionListFooter}>
+          <Text>
+            {entityOptions?.moreRecords ? languagePack.SuggestionListFullMessage : languagePack.NoMoreRecordsMessage}
+          </Text>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <FluentProvider style={{ width: "100%" }} theme={fluentDesign?.tokenTheme}>
       <TagPicker
@@ -353,7 +412,7 @@ export default function PolyLookupControlNewLook({
       >
         <TagPickerControl
           secondaryAction={
-            onQuickCreate && !entityOptions?.length && !isFetchingEntityOptions && !isDataLoading ? (
+            onQuickCreate && !entityOptions?.records.length && !isFetchingEntityOptions && !isDataLoading ? (
               <Button appearance="transparent" size="small" shape="rounded" onClick={handleQuickCreate}>
                 {languagePack.AddNewLabel}
               </Button>
@@ -415,38 +474,7 @@ export default function PolyLookupControlNewLook({
         {disabled || !isSupported || (itemLimit !== undefined && (selectedOptions?.length ?? 0) >= itemLimit) ? (
           <></>
         ) : (
-          <TagPickerList className={listBox}>
-            {optionList?.length && isSuccessEntityOptions
-              ? optionList.map((option) => (
-                  <TagPickerOption
-                    media={
-                      showIcon ? (
-                        <Avatar
-                          className={transparentBackground}
-                          size={showIcon === ShowIconOptions.EntityIcon ? 16 : 28}
-                          shape="square"
-                          name={showIcon === ShowIconOptions.EntityIcon ? "" : option.optionText}
-                          image={{
-                            className: transparentBackground,
-                            src:
-                              showIcon === ShowIconOptions.EntityIcon
-                                ? metadata?.associatedEntity.EntityIconUrl
-                                : option.iconSrc,
-                          }}
-                          color={showIcon === ShowIconOptions.EntityIcon ? "neutral" : "colorful"}
-                          aria-hidden
-                        />
-                      ) : undefined
-                    }
-                    key={option.id}
-                    value={option.id}
-                    text={option.optionText}
-                  >
-                    <SuggestionInfo data={option} columns={lookupViewConfig?.columns ?? []} />
-                  </TagPickerOption>
-                ))
-              : "No options available"}
-          </TagPickerList>
+          <TagPickerList>{renderOptionList()}</TagPickerList>
         )}
       </TagPicker>
     </FluentProvider>

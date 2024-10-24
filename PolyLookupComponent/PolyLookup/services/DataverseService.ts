@@ -59,7 +59,7 @@ const DEFAULT_HEADERS = {
   Accept: "application/json",
   "Content-Type": "application/json; charset=utf-8",
   Prefer:
-    'odata.include-annotations="OData.Community.Display.V1.FormattedValue,Microsoft.Dynamics.CRM.associatednavigationproperty,Microsoft.Dynamics.CRM.lookuplogicalname"',
+    'odata.include-annotations="OData.Community.Display.V1.FormattedValue,Microsoft.Dynamics.CRM.associatednavigationproperty,Microsoft.Dynamics.CRM.lookuplogicalname,Microsoft.Dynamics.CRM.morerecords"',
 };
 
 const parser = new DOMParser();
@@ -207,7 +207,7 @@ export async function getEntityOptions(
   searchText?: string,
   pageSize?: number
 ) {
-  if (!metadata || !lookupViewConfig) return Promise.resolve([]);
+  if (!metadata || !lookupViewConfig) return Promise.resolve({ records: [], moreRecords: false });
 
   let fetchXml = lookupViewConfig.fetchXml;
   let shouldDefaultSearch = false;
@@ -272,25 +272,33 @@ export async function getEntityOptions(
     fetchXml = serializer.serializeToString(doc);
   }
 
-  const records = await retrieveMultipleFetch(metadata.associatedEntity.EntitySetName, fetchXml, 1, pageSize);
-  return records.map((r) => {
-    const iconSrc = metadata.associatedEntity.PrimaryImageAttribute
-      ? `/api/data/v${apiVersion}/${metadata.associatedEntity.EntitySetName}(${
-          r[metadata.associatedEntity.PrimaryIdAttribute]
-        })/${metadata.associatedEntity.PrimaryImageAttribute}/$value`
-      : "";
+  const { records, moreRecords } = await retrieveMultipleFetch(
+    metadata.associatedEntity.EntitySetName,
+    fetchXml,
+    1,
+    pageSize
+  );
+  return {
+    records: records.map((r) => {
+      const iconSrc = metadata.associatedEntity.PrimaryImageAttribute
+        ? `/api/data/v${apiVersion}/${metadata.associatedEntity.EntitySetName}(${
+            r[metadata.associatedEntity.PrimaryIdAttribute]
+          })/${metadata.associatedEntity.PrimaryImageAttribute}/$value`
+        : "";
 
-    return {
-      id: r[metadata.associatedEntity.PrimaryIdAttribute],
-      intersectId: "",
-      associatedId: r[metadata.associatedEntity.PrimaryIdAttribute],
-      associatedName: r[metadata.associatedEntity.PrimaryNameAttribute],
-      optionText: r[metadata.associatedEntity.PrimaryNameAttribute],
-      selectedOptionText: r[metadata.associatedEntity.PrimaryNameAttribute],
-      iconSrc,
-      entity: r,
-    } as EntityOption;
-  });
+      return {
+        id: r[metadata.associatedEntity.PrimaryIdAttribute],
+        intersectId: "",
+        associatedId: r[metadata.associatedEntity.PrimaryIdAttribute],
+        associatedName: r[metadata.associatedEntity.PrimaryNameAttribute],
+        optionText: r[metadata.associatedEntity.PrimaryNameAttribute],
+        selectedOptionText: r[metadata.associatedEntity.PrimaryNameAttribute],
+        iconSrc,
+        entity: r,
+      } as EntityOption;
+    }),
+    moreRecords,
+  };
 }
 
 function getLanguagePack(webResourceUrl: string | undefined, defaultLanguagePack: LanguagePack): Promise<LanguagePack> {
@@ -719,17 +727,27 @@ export async function retrieveMultipleFetch(
     }
     const newFetchXml = new XMLSerializer().serializeToString(doc);
 
-    const { data } = await axios.get<{ value: ComponentFramework.WebApi.Entity[] }>(
-      `/api/data/v${apiVersion}/${entitySetName}`,
-      {
-        headers: DEFAULT_HEADERS,
-        params: {
-          fetchXml: encodeURIComponent(newFetchXml),
-        },
-      }
-    );
+    const { data } = await axios.get<{
+      value: ComponentFramework.WebApi.Entity[];
+      "@Microsoft.Dynamics.CRM.morerecords": boolean;
+    }>(`/api/data/v${apiVersion}/${entitySetName}`, {
+      headers: DEFAULT_HEADERS,
+      params: {
+        fetchXml: encodeURIComponent(newFetchXml),
+      },
+    });
 
-    return data.value ?? [];
+    if (data.value.length === 0) {
+      return {
+        records: [],
+        moreRecords: false,
+      };
+    }
+
+    return {
+      records: data.value,
+      moreRecords: data["@Microsoft.Dynamics.CRM.morerecords"],
+    };
   } catch (error) {
     // handle serialization error
     if (error instanceof DOMException || error instanceof TypeError || error instanceof SyntaxError) {
@@ -768,7 +786,7 @@ export async function retrieveAssociatedRecords(
     </entity>
   </fetch>`;
 
-  const results = await retrieveMultipleFetch(intersectEntity.EntitySetName, fetchXml);
+  const { records: results } = await retrieveMultipleFetch(intersectEntity.EntitySetName, fetchXml);
   return results.map((r) => {
     const intersectId = r[intersectEntity.PrimaryIdAttribute];
     const associatedId = r[`aLink.${associatedEntity.PrimaryIdAttribute}`];
