@@ -334,10 +334,10 @@ export default function PolyLookupControlNewLook({
         if (result) {
           associateQuery(result, {
             onSuccess: () => {
+              setSearchText("");
               queryClient.invalidateQueries({
                 queryKey: ["selectedItems"],
               });
-              setSearchText("");
             },
           });
         }
