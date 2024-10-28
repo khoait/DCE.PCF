@@ -155,8 +155,10 @@ export function useAssociateQuery(
         relationshipType === RelationshipTypeEnum.Connection
       ) {
         return createRecord(metadata?.intersectEntity.EntitySetName, {
-          [`${metadata?.currentEntityNavigationPropertyName}@odata.bind`]: `/${metadata?.currentEntity.EntitySetName}(${currentRecordId})`,
-          [`${metadata?.associatedEntityNavigationPropertyName}@odata.bind`]: `/${metadata?.associatedEntity.EntitySetName}(${id})`,
+          [`${metadata?.currentEntityNavigationPropertyName}@odata.bind`]: `/${metadata?.currentEntity
+            .EntitySetName}(${currentRecordId.replace("{", "").replace("}", "")})`,
+          [`${metadata?.associatedEntityNavigationPropertyName}@odata.bind`]: `/${metadata?.associatedEntity
+            .EntitySetName}(${id.replace("{", "").replace("}", "")})`,
         });
       }
       return Promise.reject(languagePack.RelationshipNotSupportedMessage);
@@ -833,7 +835,9 @@ export function associateRecord(
   }
 
   return axios.post(
-    `/api/data/v${apiVersion}/${entitySetName}(${currentRecordId})/${relationshipName}/$ref`,
+    `/api/data/v${apiVersion}/${entitySetName}(${currentRecordId
+      .replace("{", "")
+      .replace("}", "")})/${relationshipName}/$ref`,
     {
       "@odata.id": `${clientUrl}/api/data/v${apiVersion}/${associatedEntitySet}(${associateRecordId
         .replace("{", "")
@@ -861,7 +865,9 @@ export function disassociateRecord(
   }
 
   return axios.delete(
-    `/api/data/v${apiVersion}/${entitySetName}(${currentRecordId})/${relationshipName}(${associatedRecordId})/$ref`,
+    `/api/data/v${apiVersion}/${entitySetName}(${currentRecordId
+      .replace("{", "")
+      .replace("}", "")})/${relationshipName}(${associatedRecordId})/$ref`,
     {
       headers: DEFAULT_HEADERS,
     }
@@ -880,7 +886,7 @@ export function deleteRecord(entitySetName: string | undefined, recordId: string
   if (typeof entitySetName === "undefined" || typeof recordId === "undefined")
     return Promise.reject(new Error("Invalid arguments"));
 
-  return axios.delete(`/api/data/v${apiVersion}/${entitySetName}(${recordId})`, {
+  return axios.delete(`/api/data/v${apiVersion}/${entitySetName}(${recordId.replace("{", "").replace("}", "")})`, {
     headers: DEFAULT_HEADERS,
   });
 }
@@ -932,13 +938,4 @@ async function getEnvironmentVariableValue(environmentVariableName: string) {
   } catch (error) {
     return null;
   }
-}
-
-function checkImage(imgUrl: string): Promise<boolean> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(true);
-    img.onerror = () => reject(false);
-    img.src = imgUrl;
-  });
 }
