@@ -15,6 +15,7 @@ export interface PolyLookupProps {
   outputSelectedItems?: boolean;
   showIcon?: ShowIconOptions;
   tagAction?: TagAction;
+  showOptionDetails?: ShowOptionDetailsEnum;
   defaultLanguagePack: LanguagePack;
   languagePackPath?: string;
   fluentDesign?: ComponentFramework.FluentDesignState;
@@ -63,4 +64,10 @@ export enum ShowIconOptions {
   None = 0,
   EntityIcon = 1,
   RecordImage = 2,
+}
+
+export enum ShowOptionDetailsEnum {
+  Collapsed = 0,
+  Expanded = 1,
+  Tooltip = 2,
 }

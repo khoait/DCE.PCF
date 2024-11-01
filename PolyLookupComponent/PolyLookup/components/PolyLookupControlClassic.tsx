@@ -32,10 +32,10 @@ import {
   PolyLookupProps,
   RelationshipTypeEnum,
   ShowIconOptions,
+  ShowOptionDetailsEnum,
   TagAction,
 } from "../types/typings";
 import { SuggestionInfo } from "./SuggestionInfo";
-import { Avatar } from "@fluentui/react-components";
 
 interface ITagWithData extends ITag {
   data: EntityOption;
@@ -56,6 +56,7 @@ export default function PolyLookupControlClassic({
   outputSelectedItems,
   showIcon,
   tagAction,
+  showOptionDetails,
   defaultLanguagePack,
   languagePackPath,
   onChange,
@@ -524,7 +525,13 @@ export default function PolyLookupControlClassic({
       }}
       onRenderSuggestionsItem={(tag: ITag) => {
         const data = (tag as ITagWithData).data;
-        return <SuggestionInfo data={data} columns={lookupViewConfig?.columns ?? []} />;
+        return (
+          <SuggestionInfo
+            data={data}
+            columns={lookupViewConfig?.columns ?? []}
+            showOptionDetails={showOptionDetails ?? ShowOptionDetailsEnum.Collapsed}
+          />
+        );
       }}
       resolveDelay={100}
       inputProps={{

@@ -1,11 +1,15 @@
-import { IconButton, ILabelStyles, IStyle, Stack, Text } from "@fluentui/react";
+import { IconButton, ILabelStyles, IStyle, Stack, Text, TooltipHost } from "@fluentui/react";
+import { Tooltip } from "@fluentui/react-components";
 import { useBoolean } from "@fluentui/react-hooks";
+import { Info16Regular } from "@fluentui/react-icons";
 import React from "react";
-import { EntityOption } from "../types/typings";
+import { EntityOption, ShowOptionDetailsEnum } from "../types/typings";
 
 export interface ISuggestionInfoProps {
   data: EntityOption;
   columns: string[];
+  showOptionDetails: ShowOptionDetailsEnum;
+  isModern?: boolean;
 }
 
 const commonStyle: IStyle = {
@@ -23,8 +27,8 @@ const secondaryStyle: Partial<ILabelStyles> = {
   root: { ...commonStyle, color: "#666" },
 };
 
-export const SuggestionInfo = ({ data, columns }: ISuggestionInfoProps) => {
-  const [showMore, { toggle: toggleshowMore }] = useBoolean(false);
+export const SuggestionInfo = ({ data, columns, showOptionDetails, isModern }: ISuggestionInfoProps) => {
+  const [showMore, { toggle: toggleshowMore }] = useBoolean(showOptionDetails === ShowOptionDetailsEnum.Expanded);
 
   const infoMap = new Map<string, string>();
   columns.forEach((column) => {
@@ -35,6 +39,10 @@ export const SuggestionInfo = ({ data, columns }: ISuggestionInfoProps) => {
 
     infoMap.set(column, displayValue);
   });
+
+  const tooltipContent = Array.from(infoMap)
+    .filter(([key, value], index) => value !== "" && index > 0)
+    .map(([key, value]) => <div key={`tooltip_${key}`}>{value}</div>);
 
   return (
     <Stack horizontal grow styles={{ root: { flex: 1, minWidth: 0 } }}>
@@ -51,20 +59,41 @@ export const SuggestionInfo = ({ data, columns }: ISuggestionInfoProps) => {
       </Stack.Item>
       {columns.length > 1 ? (
         <Stack.Item align="stretch">
-          <IconButton
-            iconProps={{ iconName: showMore ? "ChevronUp" : "ChevronDown" }}
-            styles={{
-              root: { height: "100%", color: "#000" },
-              flexContainer: { alignItems: showMore ? "flex-start" : "center", paddingTop: showMore ? 11 : 0 },
-            }}
-            title="More details"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              toggleshowMore();
-              return false;
-            }}
-          />
+          {showOptionDetails === ShowOptionDetailsEnum.Tooltip ? (
+            <Stack verticalAlign="center" horizontalAlign="center" verticalFill>
+              {isModern ? (
+                <Tooltip
+                  content={{
+                    children: tooltipContent,
+                  }}
+                  positioning="above-start"
+                  withArrow
+                  relationship="description"
+                >
+                  <Info16Regular tabIndex={0} />
+                </Tooltip>
+              ) : (
+                <TooltipHost content={tooltipContent}>
+                  <Info16Regular tabIndex={0} style={{ padding: "0 4px" }} />
+                </TooltipHost>
+              )}
+            </Stack>
+          ) : (
+            <IconButton
+              iconProps={{ iconName: showMore ? "ChevronUp" : "ChevronDown" }}
+              styles={{
+                root: { height: "100%", color: "#000" },
+                flexContainer: { alignItems: showMore ? "flex-start" : "center", paddingTop: showMore ? 11 : 0 },
+              }}
+              title="More details"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleshowMore();
+                return false;
+              }}
+            />
+          )}
         </Stack.Item>
       ) : null}
     </Stack>
