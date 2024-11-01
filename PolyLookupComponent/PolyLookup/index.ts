@@ -4,7 +4,14 @@ import PolyLookupControl from "./components/PolyLookupControl";
 import { IInputs, IOutputs } from "./generated/ManifestTypes";
 import { IExtendedContext } from "./types/extendedContext";
 import { LanguagePack } from "./types/languagePack";
-import { EntityReference, PolyLookupProps, RelationshipTypeEnum, ShowIconOptions, TagAction } from "./types/typings";
+import {
+  EntityReference,
+  PolyLookupProps,
+  RelationshipTypeEnum,
+  ShowIconOptions,
+  ShowOptionDetailsEnum,
+  TagAction,
+} from "./types/typings";
 export class PolyLookup implements ComponentFramework.StandardControl<IInputs, IOutputs> {
   private container: HTMLDivElement;
   private root: Root;
@@ -118,6 +125,9 @@ export class PolyLookup implements ComponentFramework.StandardControl<IInputs, I
         : undefined,
       tagAction: this.context.parameters.tagAction?.raw
         ? (Number.parseInt(this.context.parameters.tagAction.raw) as TagAction)
+        : undefined,
+      showOptionDetails: this.context.parameters.showOptionDetails?.raw
+        ? (Number.parseInt(this.context.parameters.showOptionDetails.raw) as ShowOptionDetailsEnum)
         : undefined,
       defaultLanguagePack: this.languagePack,
       languagePackPath: this.context.parameters.languagePackPath?.raw ?? undefined,

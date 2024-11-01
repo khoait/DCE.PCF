@@ -1,5 +1,7 @@
 import {
   Avatar,
+  Button,
+  Divider,
   FluentProvider,
   InteractionTag,
   InteractionTagPrimary,
@@ -12,15 +14,15 @@ import {
   TagPickerList,
   TagPickerOption,
   TagPickerProps,
-  makeStyles,
-  tokens,
   Text,
-  Button,
+  makeStyles,
   mergeClasses,
-  Divider,
+  tokens,
 } from "@fluentui/react-components";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useState } from "react";
+import { sprintf } from "sprintf-js";
+import { useAttributeOnChange } from "../hooks/useAttributeOnChange";
 import {
   useAssociateQuery,
   useDisassociateQuery,
@@ -36,11 +38,10 @@ import {
   PolyLookupProps,
   RelationshipTypeEnum,
   ShowIconOptions,
+  ShowOptionDetailsEnum,
   TagAction,
 } from "../types/typings";
-import { sprintf } from "sprintf-js";
 import { SuggestionInfo } from "./SuggestionInfo";
-import { useAttributeOnChange } from "../hooks/useAttributeOnChange";
 
 const useStyle = makeStyles({
   tagGroup: {
@@ -93,6 +94,7 @@ export default function PolyLookupControlNewLook({
   outputSelectedItems,
   showIcon,
   tagAction,
+  showOptionDetails,
   defaultLanguagePack,
   languagePackPath,
   fluentDesign,
@@ -386,7 +388,11 @@ export default function PolyLookupControlNewLook({
               value={option.id}
               text={option.optionText}
             >
-              <SuggestionInfo data={option} columns={lookupViewConfig?.columns ?? []} />
+              <SuggestionInfo
+                data={option}
+                columns={lookupViewConfig?.columns ?? []}
+                showOptionDetails={showOptionDetails ?? ShowOptionDetailsEnum.Collapsed}
+              />
             </TagPickerOption>
           ))}
         </div>
