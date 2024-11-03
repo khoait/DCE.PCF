@@ -13,6 +13,7 @@ import {
   isManyToMany,
 } from "../types/metadata";
 import { EntityOption, RelationshipTypeEnum } from "../types/typings";
+import { getHandlebarsVariables } from "./TemplateService";
 
 const nToNColumns = [
   "SchemaName",
@@ -89,15 +90,17 @@ export function useLookupViewConfig(
 export function useSelectedItems(
   metadata: IMetadata | undefined,
   currentRecordId: string,
-  formType: XrmEnum.FormType | undefined
+  formType: XrmEnum.FormType | undefined,
+  selectedItemTemplate?: string | null
 ) {
   return useQuery({
-    queryKey: ["selectedItems", metadata, currentRecordId, formType],
+    queryKey: ["selectedItems", metadata, currentRecordId, formType, selectedItemTemplate],
     queryFn: () => {
       if (!metadata || !currentRecordId || formType === XrmEnum.FormType.Create) {
         return [];
       }
-      return retrieveAssociatedRecords(metadata, currentRecordId);
+
+      return retrieveAssociatedRecords(metadata, currentRecordId, selectedItemTemplate);
     },
     enabled: !!metadata?.intersectEntity.EntitySetName && !!metadata?.associatedEntity.EntitySetName,
   });
@@ -773,17 +776,23 @@ export async function retrieveAssociatedRecords(
     currentIntersectAttribute,
     associatedIntersectAttribute,
   }: IMetadata,
-  currentRecordId: string
+  currentRecordId: string,
+  selectedItemTemplate?: string | null
 ) {
+  const columns = getHandlebarsVariables(selectedItemTemplate ?? "");
+  let fetchColumns = [...columns, associatedEntity.PrimaryIdAttribute, associatedEntity.PrimaryNameAttribute];
+  fetchColumns = Array.from(new Set(fetchColumns));
+
   const fetchXml = `<fetch>
     <entity name="${intersectEntity.LogicalName}">
       <attribute name="${intersectEntity.PrimaryIdAttribute}" />  
       <filter>
         <condition attribute="${currentIntersectAttribute}" operator="eq" value="${currentRecordId}" />
       </filter>
-      <link-entity name="${associatedEntity.LogicalName}" from="${associatedEntity.PrimaryIdAttribute}" to="${associatedIntersectAttribute}" alias="aLink">
-        <attribute name="${associatedEntity.PrimaryIdAttribute}" />  
-        <attribute name="${associatedEntity.PrimaryNameAttribute}" />
+      <link-entity name="${associatedEntity.LogicalName}" from="${
+        associatedEntity.PrimaryIdAttribute
+      }" to="${associatedIntersectAttribute}" alias="aLink">
+        ${fetchColumns.map((c) => `<attribute name="${c}" />`).join("")}
       </link-entity>
     </entity>
   </fetch>`;
@@ -791,12 +800,18 @@ export async function retrieveAssociatedRecords(
   const { records: results } = await retrieveMultipleFetch(intersectEntity.EntitySetName, fetchXml);
   return results.map((r) => {
     const intersectId = r[intersectEntity.PrimaryIdAttribute];
-    const associatedId = r[`aLink.${associatedEntity.PrimaryIdAttribute}`];
-    const associatedName = r[`aLink.${associatedEntity.PrimaryNameAttribute}`];
-    const entity = {
-      [associatedEntity.PrimaryIdAttribute]: associatedId,
-      [associatedEntity.PrimaryNameAttribute]: associatedName,
-    } as ComponentFramework.WebApi.Entity;
+
+    const entity = {} as ComponentFramework.WebApi.Entity;
+
+    fetchColumns.forEach((c) => {
+      entity[c] = r[`aLink.${c}`];
+    });
+
+    const associatedId = entity[associatedEntity.PrimaryIdAttribute];
+    const associatedName = entity[associatedEntity.PrimaryNameAttribute];
+
+    const selectedOpionTemplateFn = selectedItemTemplate ? Handlebars.compile(selectedItemTemplate) : null;
+    const selectedOptionText = selectedOpionTemplateFn?.(entity) ?? associatedName;
 
     const iconSrc = associatedEntity.PrimaryImageAttribute
       ? `/api/data/v${apiVersion}/${associatedEntity.EntitySetName}(${associatedId})/${associatedEntity.PrimaryImageAttribute}/$value`
@@ -808,7 +823,7 @@ export async function retrieveAssociatedRecords(
       associatedId,
       associatedName,
       optionText: associatedName,
-      selectedOptionText: associatedName,
+      selectedOptionText,
       iconSrc,
       entity,
     } as EntityOption;

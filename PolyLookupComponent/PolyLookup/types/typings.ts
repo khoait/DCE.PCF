@@ -15,6 +15,7 @@ export interface PolyLookupProps {
   outputSelectedItems?: boolean;
   showIcon?: ShowIconOptions;
   tagAction?: TagAction;
+  selectedItemTemplate?: string | null;
   showOptionDetails?: ShowOptionDetailsEnum;
   defaultLanguagePack: LanguagePack;
   languagePackPath?: string;
