@@ -13,6 +13,7 @@ import {
   isManyToMany,
 } from "../types/metadata";
 import { EntityOption, RelationshipTypeEnum } from "../types/typings";
+import { getHandlebarsVariables } from "./TemplateService";
 
 const nToNColumns = [
   "SchemaName",
@@ -89,15 +90,18 @@ export function useLookupViewConfig(
 export function useSelectedItems(
   metadata: IMetadata | undefined,
   currentRecordId: string,
-  formType: XrmEnum.FormType | undefined
+  formType: XrmEnum.FormType | undefined,
+  firstViewColumn?: string,
+  selectedItemTemplate?: string | null
 ) {
   return useQuery({
-    queryKey: ["selectedItems", metadata, currentRecordId, formType],
+    queryKey: ["selectedItems", metadata, currentRecordId, formType, firstViewColumn, selectedItemTemplate],
     queryFn: () => {
       if (!metadata || !currentRecordId || formType === XrmEnum.FormType.Create) {
         return [];
       }
-      return retrieveAssociatedRecords(metadata, currentRecordId);
+
+      return retrieveAssociatedRecords(metadata, currentRecordId, firstViewColumn, selectedItemTemplate);
     },
     enabled: !!metadata?.intersectEntity.EntitySetName && !!metadata?.associatedEntity.EntitySetName,
   });
@@ -545,6 +549,7 @@ async function getLookupViewConfig(
       source: "FetchXml",
       fetchXml: lookupViewVal,
       columns: [],
+      firstAttribute: primaryNameAttribute,
       isSystemLookupView: false,
     };
   }
@@ -555,6 +560,7 @@ async function getLookupViewConfig(
       source: lookupViewVal,
       fetchXml: "",
       columns: [],
+      firstAttribute: primaryNameAttribute,
       isSystemLookupView: false,
     };
 
@@ -590,6 +596,7 @@ async function getLookupViewConfig(
           source: lookupViewVal,
           fetchXml: environmentVariableValue,
           columns: [],
+          firstAttribute: primaryNameAttribute,
           isSystemLookupView: false,
         };
       }
@@ -600,11 +607,13 @@ async function getLookupViewConfig(
       // check if lookupViewValue is a view name
       const viewDef = await getDefaultView(associatedEntityName, lookupViewVal);
       if (viewDef) {
+        const columns = viewDef.layoutjson.Rows[0].Cells.map((c) => c.Name);
         lookupViewConfig = {
           sourceType: "ViewName",
           source: lookupViewVal,
           fetchXml: viewDef.fetchxml,
-          columns: viewDef.layoutjson.Rows[0].Cells.map((c) => c.Name),
+          columns,
+          firstAttribute: columns[0],
           isSystemLookupView: viewDef.querytype === 64,
         };
       }
@@ -656,6 +665,7 @@ async function getLookupViewConfig(
         return attributeName;
       })
       .filter((attr) => attr !== "");
+    lookupViewConfig.firstAttribute = attributes[0].getAttribute("name") ?? primaryNameAttribute;
   }
 
   // check if doc has attribute with name equals primaryIdAttribute and primaryNameAttribute
@@ -773,17 +783,29 @@ export async function retrieveAssociatedRecords(
     currentIntersectAttribute,
     associatedIntersectAttribute,
   }: IMetadata,
-  currentRecordId: string
+  currentRecordId: string,
+  firstViewColumn?: string,
+  selectedItemTemplate?: string | null
 ) {
+  const columns = getHandlebarsVariables(selectedItemTemplate ?? "");
+  let fetchColumns = [
+    ...columns,
+    firstViewColumn ?? associatedEntity.PrimaryNameAttribute,
+    associatedEntity.PrimaryIdAttribute,
+    associatedEntity.PrimaryNameAttribute,
+  ];
+  fetchColumns = Array.from(new Set(fetchColumns));
+
   const fetchXml = `<fetch>
     <entity name="${intersectEntity.LogicalName}">
       <attribute name="${intersectEntity.PrimaryIdAttribute}" />  
       <filter>
         <condition attribute="${currentIntersectAttribute}" operator="eq" value="${currentRecordId}" />
       </filter>
-      <link-entity name="${associatedEntity.LogicalName}" from="${associatedEntity.PrimaryIdAttribute}" to="${associatedIntersectAttribute}" alias="aLink">
-        <attribute name="${associatedEntity.PrimaryIdAttribute}" />  
-        <attribute name="${associatedEntity.PrimaryNameAttribute}" />
+      <link-entity name="${associatedEntity.LogicalName}" from="${
+        associatedEntity.PrimaryIdAttribute
+      }" to="${associatedIntersectAttribute}" alias="aLink">
+        ${fetchColumns.map((c) => `<attribute name="${c}" />`).join("")}
       </link-entity>
     </entity>
   </fetch>`;
@@ -791,12 +813,19 @@ export async function retrieveAssociatedRecords(
   const { records: results } = await retrieveMultipleFetch(intersectEntity.EntitySetName, fetchXml);
   return results.map((r) => {
     const intersectId = r[intersectEntity.PrimaryIdAttribute];
-    const associatedId = r[`aLink.${associatedEntity.PrimaryIdAttribute}`];
-    const associatedName = r[`aLink.${associatedEntity.PrimaryNameAttribute}`];
-    const entity = {
-      [associatedEntity.PrimaryIdAttribute]: associatedId,
-      [associatedEntity.PrimaryNameAttribute]: associatedName,
-    } as ComponentFramework.WebApi.Entity;
+
+    const entity = {} as ComponentFramework.WebApi.Entity;
+
+    fetchColumns.forEach((c) => {
+      entity[c] = r[`aLink.${c}`];
+    });
+
+    const associatedId = entity[associatedEntity.PrimaryIdAttribute];
+    const associatedName = entity[associatedEntity.PrimaryNameAttribute];
+
+    const selectedOpionTemplateFn = selectedItemTemplate ? Handlebars.compile(selectedItemTemplate) : null;
+    const selectedOptionText =
+      selectedOpionTemplateFn?.(entity) ?? entity[firstViewColumn ?? associatedEntity.PrimaryNameAttribute];
 
     const iconSrc = associatedEntity.PrimaryImageAttribute
       ? `/api/data/v${apiVersion}/${associatedEntity.EntitySetName}(${associatedId})/${associatedEntity.PrimaryImageAttribute}/$value`
@@ -808,7 +837,7 @@ export async function retrieveAssociatedRecords(
       associatedId,
       associatedName,
       optionText: associatedName,
-      selectedOptionText: associatedName,
+      selectedOptionText,
       iconSrc,
       entity,
     } as EntityOption;

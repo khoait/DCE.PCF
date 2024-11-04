@@ -56,6 +56,7 @@ export default function PolyLookupControlClassic({
   outputSelectedItems,
   showIcon,
   tagAction,
+  selectedItemTemplate,
   showOptionDetails,
   defaultLanguagePack,
   languagePackPath,
@@ -122,7 +123,7 @@ export default function PolyLookupControlClassic({
     isSuccess: isLoadingSelectedItemsSuccess,
     isError: isErrorSelectedItems,
     error: errorSelectedItems,
-  } = useSelectedItems(metadata, currentRecordId, formType);
+  } = useSelectedItems(metadata, currentRecordId, formType, lookupViewConfig?.firstAttribute, selectedItemTemplate);
 
   useEffect(() => {
     if (isFetchingSelectedItems || !isLoadingSelectedItemsSuccess || !onChange) return;
@@ -552,7 +553,7 @@ function getSuggestionTags(suggestions: EntityOption[] | undefined, metadata: IM
       (i) =>
         ({
           key: i.id ?? "",
-          name: i.optionText ?? "",
+          name: i.selectedOptionText ?? "",
           data: i,
         }) as ITagWithData
     ) ?? []

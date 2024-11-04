@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <manifest>
-  <control namespace="DCEPCF" constructor="PolyLookup" version="1.6.3" display-name-key="PolyLookup v1.6.3" description-key="Multi-select lookup supporting different type of many-to-many relationships" control-type="standard" >
+  <control namespace="DCEPCF" constructor="PolyLookup" version="1.6.4" display-name-key="PolyLookup v1.6.4" description-key="Multi-select lookup supporting different type of many-to-many relationships" control-type="standard" >
     <!--external-service-usage node declares whether this 3rd party PCF control is using external service or not, if yes, this control will be considered as premium and please also add the external domain it is using.
     If it is not using any external service, please set the enabled="false" and DO NOT add any domain below. The "enabled" will be false by default.
     Example1:
@@ -49,6 +49,7 @@
       <value name="open-inline-intersect" display-name-key="Open Inline (Intersect relationship)">3</value>
       <value name="open-dialog-intersect" display-name-key="Open Dialog (Intersect relationship)">4</value>
     </property>
+    <property name="selectedItemTemplate" display-name-key="Selected Option Display Template" description-key="Dynamic template to display selected option text. Default to the first column in the lookup view if not provided." of-type="SingleLine.Text" usage="input" required="false" />
     <property name="showOptionDetails" display-name-key="Show Option Details" description-key="Option to show more details in suggestion list. Default: Collapsed." of-type="Enum" usage="input" required="false" default-value="0" >
       <value name="collapsed" display-name-key="Collapsed">0</value>
       <value name="expanded" display-name-key="Expanded">1</value>

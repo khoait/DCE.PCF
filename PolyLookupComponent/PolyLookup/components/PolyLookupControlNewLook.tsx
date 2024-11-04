@@ -95,6 +95,7 @@ export default function PolyLookupControlNewLook({
   showIcon,
   tagAction,
   showOptionDetails,
+  selectedItemTemplate,
   defaultLanguagePack,
   languagePackPath,
   fluentDesign,
@@ -165,7 +166,7 @@ export default function PolyLookupControlNewLook({
     isSuccess: isLoadingSelectedItemsSuccess,
     isError: isErrorSelectedItems,
     error: errorSelectedItems,
-  } = useSelectedItems(metadata, currentRecordId, formType);
+  } = useSelectedItems(metadata, currentRecordId, formType, lookupViewConfig?.firstAttribute, selectedItemTemplate);
 
   const {
     data: entityOptions,
@@ -442,7 +443,7 @@ export default function PolyLookupControlNewLook({
                       <Avatar
                         className={imageStyle}
                         size={showIcon === ShowIconOptions.EntityIcon ? 16 : 20}
-                        name={showIcon === ShowIconOptions.EntityIcon ? "" : i.selectedOptionText}
+                        name={showIcon === ShowIconOptions.EntityIcon ? "" : i.optionText}
                         image={{
                           className: transparentBackground,
                           src:
