@@ -91,16 +91,17 @@ export function useSelectedItems(
   metadata: IMetadata | undefined,
   currentRecordId: string,
   formType: XrmEnum.FormType | undefined,
+  firstViewColumn?: string,
   selectedItemTemplate?: string | null
 ) {
   return useQuery({
-    queryKey: ["selectedItems", metadata, currentRecordId, formType, selectedItemTemplate],
+    queryKey: ["selectedItems", metadata, currentRecordId, formType, firstViewColumn, selectedItemTemplate],
     queryFn: () => {
       if (!metadata || !currentRecordId || formType === XrmEnum.FormType.Create) {
         return [];
       }
 
-      return retrieveAssociatedRecords(metadata, currentRecordId, selectedItemTemplate);
+      return retrieveAssociatedRecords(metadata, currentRecordId, firstViewColumn, selectedItemTemplate);
     },
     enabled: !!metadata?.intersectEntity.EntitySetName && !!metadata?.associatedEntity.EntitySetName,
   });
@@ -548,6 +549,7 @@ async function getLookupViewConfig(
       source: "FetchXml",
       fetchXml: lookupViewVal,
       columns: [],
+      firstAttribute: primaryNameAttribute,
       isSystemLookupView: false,
     };
   }
@@ -558,6 +560,7 @@ async function getLookupViewConfig(
       source: lookupViewVal,
       fetchXml: "",
       columns: [],
+      firstAttribute: primaryNameAttribute,
       isSystemLookupView: false,
     };
 
@@ -593,6 +596,7 @@ async function getLookupViewConfig(
           source: lookupViewVal,
           fetchXml: environmentVariableValue,
           columns: [],
+          firstAttribute: primaryNameAttribute,
           isSystemLookupView: false,
         };
       }
@@ -603,11 +607,13 @@ async function getLookupViewConfig(
       // check if lookupViewValue is a view name
       const viewDef = await getDefaultView(associatedEntityName, lookupViewVal);
       if (viewDef) {
+        const columns = viewDef.layoutjson.Rows[0].Cells.map((c) => c.Name);
         lookupViewConfig = {
           sourceType: "ViewName",
           source: lookupViewVal,
           fetchXml: viewDef.fetchxml,
-          columns: viewDef.layoutjson.Rows[0].Cells.map((c) => c.Name),
+          columns,
+          firstAttribute: columns[0],
           isSystemLookupView: viewDef.querytype === 64,
         };
       }
@@ -659,6 +665,7 @@ async function getLookupViewConfig(
         return attributeName;
       })
       .filter((attr) => attr !== "");
+    lookupViewConfig.firstAttribute = attributes[0].getAttribute("name") ?? primaryNameAttribute;
   }
 
   // check if doc has attribute with name equals primaryIdAttribute and primaryNameAttribute
@@ -777,10 +784,16 @@ export async function retrieveAssociatedRecords(
     associatedIntersectAttribute,
   }: IMetadata,
   currentRecordId: string,
+  firstViewColumn?: string,
   selectedItemTemplate?: string | null
 ) {
   const columns = getHandlebarsVariables(selectedItemTemplate ?? "");
-  let fetchColumns = [...columns, associatedEntity.PrimaryIdAttribute, associatedEntity.PrimaryNameAttribute];
+  let fetchColumns = [
+    ...columns,
+    firstViewColumn ?? associatedEntity.PrimaryNameAttribute,
+    associatedEntity.PrimaryIdAttribute,
+    associatedEntity.PrimaryNameAttribute,
+  ];
   fetchColumns = Array.from(new Set(fetchColumns));
 
   const fetchXml = `<fetch>
@@ -811,7 +824,8 @@ export async function retrieveAssociatedRecords(
     const associatedName = entity[associatedEntity.PrimaryNameAttribute];
 
     const selectedOpionTemplateFn = selectedItemTemplate ? Handlebars.compile(selectedItemTemplate) : null;
-    const selectedOptionText = selectedOpionTemplateFn?.(entity) ?? associatedName;
+    const selectedOptionText =
+      selectedOpionTemplateFn?.(entity) ?? entity[firstViewColumn ?? associatedEntity.PrimaryNameAttribute];
 
     const iconSrc = associatedEntity.PrimaryImageAttribute
       ? `/api/data/v${apiVersion}/${associatedEntity.EntitySetName}(${associatedId})/${associatedEntity.PrimaryImageAttribute}/$value`

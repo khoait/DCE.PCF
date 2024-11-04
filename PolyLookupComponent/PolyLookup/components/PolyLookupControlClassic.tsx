@@ -123,7 +123,7 @@ export default function PolyLookupControlClassic({
     isSuccess: isLoadingSelectedItemsSuccess,
     isError: isErrorSelectedItems,
     error: errorSelectedItems,
-  } = useSelectedItems(metadata, currentRecordId, formType, selectedItemTemplate);
+  } = useSelectedItems(metadata, currentRecordId, formType, lookupViewConfig?.firstAttribute, selectedItemTemplate);
 
   useEffect(() => {
     if (isFetchingSelectedItems || !isLoadingSelectedItemsSuccess || !onChange) return;

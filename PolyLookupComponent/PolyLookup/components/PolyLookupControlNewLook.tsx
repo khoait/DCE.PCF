@@ -166,7 +166,7 @@ export default function PolyLookupControlNewLook({
     isSuccess: isLoadingSelectedItemsSuccess,
     isError: isErrorSelectedItems,
     error: errorSelectedItems,
-  } = useSelectedItems(metadata, currentRecordId, formType, selectedItemTemplate);
+  } = useSelectedItems(metadata, currentRecordId, formType, lookupViewConfig?.firstAttribute, selectedItemTemplate);
 
   const {
     data: entityOptions,

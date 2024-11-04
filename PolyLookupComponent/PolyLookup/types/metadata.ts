@@ -116,5 +116,6 @@ export type LookupView = {
   source: string;
   fetchXml: string;
   columns: string[];
+  firstAttribute: string; // this is used as selected option text by default
   isSystemLookupView: boolean;
 };
