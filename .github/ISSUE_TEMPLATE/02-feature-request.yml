@@ -1,0 +1,33 @@
+name: '🚀 Feature request'
+description: Suggest an idea for a new feature or enhancement to existing features.
+title: '[Feature]: '
+labels: ['type: feature 🚀']
+projects: ['khoait/1']
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for your interest in the project and for taking the time to fill out this feature report!
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem description
+      desciption: Describe the problem that you are facing
+    validations:
+      required: true
+
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature description
+      description: Describe the feature or your expectaction that you would like added, or suggest a solution
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Any other context or screenshots about the feature request here?
