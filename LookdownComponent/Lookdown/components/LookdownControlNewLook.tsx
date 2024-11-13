@@ -53,6 +53,17 @@ const useStyle = makeStyles({
   breakWord: {
     wordBreak: "break-word",
   },
+  disabled: {
+    backgroundColor: tokens.colorNeutralBackground3,
+    ...shorthands.borderColor(tokens.colorTransparentStroke),
+    "&>button": {
+      color: tokens.colorNeutralForeground1,
+      cursor: "default",
+    },
+  },
+  hidden: {
+    display: "none",
+  },
 });
 
 export default function LookdownControlNewLook({
@@ -77,8 +88,6 @@ export default function LookdownControlNewLook({
 }: LookdownControlProps) {
   const queryClient = useQueryClient();
   const styles = useStyle();
-
-  const dropdownStyles = mergeClasses(styles.dropdown, styles.flexFill);
 
   const [selectedDisplayText, setSelectedDisplayText] = useState<string>(selectedText ?? "");
   const [selectedValues, setSelectedValues] = useState<string[]>(selectedId ? [selectedId] : []);
@@ -105,6 +114,8 @@ export default function LookdownControlNewLook({
   useAttributeOnChange(metadata, customFilter);
 
   const isError = isErrorLanguagePack || isErrorMetadata || isErrorEntityOptions;
+
+  const dropdownStyles = mergeClasses(styles.dropdown, styles.flexFill, (disabled || isError) && styles.disabled);
 
   useEffect(() => {
     if (selectedId && entityOptions) {
@@ -281,11 +292,13 @@ export default function LookdownControlNewLook({
         <Dropdown
           appearance="filled-darker"
           className={dropdownStyles}
-          clearable
+          clearable={!disabled && !isError}
+          disabled={disabled || isError}
           placeholder={isError ? languagePack.LoadDataErrorMessage : "---"}
           value={isError ? "" : selectedDisplayText}
           selectedOptions={isError ? [] : selectedValues}
           button={getSelectedOptionDisplay()}
+          expandIcon={disabled || isError ? { className: styles.hidden } : undefined}
           onOptionSelect={handleOptionSelect}
         >
           {renderOptions()}
@@ -304,12 +317,12 @@ export default function LookdownControlNewLook({
                     {languagePack.OpenRecordLabel}
                   </MenuItem>
                 ) : null}
-                {allowQuickCreate ? (
+                {allowQuickCreate && !disabled && !isError ? (
                   <MenuItem icon={<AddRegular />} onClick={handleQuickCreateMenuClick}>
                     {languagePack.QuickCreateLabel}
                   </MenuItem>
                 ) : null}
-                {allowLookupPanel ? (
+                {allowLookupPanel && !disabled && !isError ? (
                   <MenuItem icon={<SearchRegular />} onClick={handleLookupPanelMenuClick}>
                     {languagePack.LookupPanelLabel}
                   </MenuItem>
