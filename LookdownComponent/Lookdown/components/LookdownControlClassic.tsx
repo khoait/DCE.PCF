@@ -367,7 +367,9 @@ export default function LookdownControlClassic({
         />
       </Stack.Item>
       <Stack horizontal>
-        {selectedId ? <IconButton iconProps={{ iconName: "Cancel" }} onClick={() => onChange?.(null)} /> : null}
+        {selectedId && !disabled && !isError ? (
+          <IconButton iconProps={{ iconName: "Cancel" }} onClick={() => onChange?.(null)} />
+        ) : null}
         {hasCommand ? <IconButton iconProps={commandIcon} menuProps={menuProps} onRenderMenuIcon={() => null} /> : null}
       </Stack>
     </Stack>
