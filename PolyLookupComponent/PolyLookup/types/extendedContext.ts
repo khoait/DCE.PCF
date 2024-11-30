@@ -122,6 +122,10 @@ interface IExtendedNavigation extends ComponentFramework.Navigation {
   ): Promise<ComponentFramework.NavigationApi.OpenFormSuccessResponse>;
 }
 
+interface IExtendedMode extends ComponentFramework.Mode {
+  isAuthoringMode: boolean;
+}
+
 export interface IExtendedContext extends ComponentFramework.Context<IInputs> {
   page: {
     appId: string;
@@ -132,4 +136,5 @@ export interface IExtendedContext extends ComponentFramework.Context<IInputs> {
   };
   userSettings: IExtendedUserSettings;
   navigation: IExtendedNavigation;
+  mode: IExtendedMode;
 }

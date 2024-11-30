@@ -24,15 +24,6 @@ import React, { useEffect, useState } from "react";
 import { sprintf } from "sprintf-js";
 import { useAttributeOnChange } from "../hooks/useAttributeOnChange";
 import {
-  useAssociateQuery,
-  useDisassociateQuery,
-  useEntityOptions,
-  useLanguagePack,
-  useLookupViewConfig,
-  useMetadata,
-  useSelectedItems,
-} from "../services/DataverseService";
-import {
   EntityOption,
   EntityReference,
   PolyLookupProps,
@@ -42,6 +33,15 @@ import {
   TagAction,
 } from "../types/typings";
 import { SuggestionInfo } from "./SuggestionInfo";
+import { useLanguagePack } from "../hooks/queries/useLanguagePack";
+import { useEntityOptions } from "../hooks/queries/useEntityOptions";
+import { useLookupViewConfig } from "../hooks/queries/useLookupViewConfig";
+import { useMetadata } from "../hooks/queries/useMetadata";
+import { useSelectedItems } from "../hooks/queries/useSelectedItems";
+import { useAssociate } from "../hooks/mutations/useAssociate";
+import { useDisassociate } from "../hooks/mutations/useDisassociate";
+import { OptionList } from "./OptionList";
+import { getPlaceholder } from "../utils";
 
 const useStyle = makeStyles({
   tagGroup: {
@@ -58,15 +58,6 @@ const useStyle = makeStyles({
   },
   borderTransparent: {
     borderLeftColor: "transparent",
-  },
-  listBox: {
-    maxHeight: "50vh",
-    overflowX: "hidden",
-    overflowY: "auto",
-    padding: tokens.spacingVerticalXS,
-  },
-  optionListFooter: {
-    padding: tokens.spacingVerticalS,
   },
   tagFontSize: {
     fontSize: tokens.fontSizeBase300,
@@ -90,7 +81,6 @@ export default function PolyLookupControlNewLook({
   itemLimit,
   pageSize,
   disabled,
-  formType,
   outputSelectedItems,
   showIcon,
   tagAction,
@@ -98,22 +88,15 @@ export default function PolyLookupControlNewLook({
   selectedItemTemplate,
   defaultLanguagePack,
   languagePackPath,
+  isAuthoringMode,
+  formType,
   fluentDesign,
   onChange,
   onQuickCreate,
 }: PolyLookupProps) {
   const queryClient = useQueryClient();
-  const {
-    tagGroup,
-    marginLeft,
-    underline,
-    borderTransparent,
-    listBox,
-    optionListFooter,
-    tagFontSize,
-    iconFontSize,
-    transparentBackground,
-  } = useStyle();
+  const { tagGroup, marginLeft, underline, borderTransparent, tagFontSize, iconFontSize, transparentBackground } =
+    useStyle();
 
   const tagStyle = mergeClasses(!!tagAction && underline);
   const iconStyle = mergeClasses(borderTransparent, iconFontSize);
@@ -179,19 +162,13 @@ export default function PolyLookupControlNewLook({
 
   const selectedOptions = formType === XrmEnum.FormType.Create ? selectedEntitiesCreate : selectedItems;
 
-  const optionList = entityOptions?.records.filter(
-    (option) => !selectedOptions?.some((i) => i.associatedId === option.associatedId)
-  );
+  const optionList =
+    entityOptions?.records.filter((option) => !selectedOptions?.some((i) => i.associatedId === option.associatedId)) ??
+    [];
 
-  const { mutate: associateQuery } = useAssociateQuery(
-    metadata,
-    currentRecordId,
-    relationshipType,
-    clientUrl,
-    languagePack
-  );
+  const { mutate: associateQuery } = useAssociate(metadata, currentRecordId, relationshipType, clientUrl, languagePack);
 
-  const { mutate: disassociateQuery } = useDisassociateQuery(metadata, currentRecordId, relationshipType, languagePack);
+  const { mutate: disassociateQuery } = useDisassociate(metadata, currentRecordId, relationshipType, languagePack);
 
   useAttributeOnChange(lookupViewConfig?.fetchXml ?? "");
 
@@ -216,36 +193,6 @@ export default function PolyLookupControlNewLook({
     XrmEnum.FormType.ReadOnly ||
     XrmEnum.FormType.Disabled ||
     (formType === XrmEnum.FormType.Create && outputSelectedItems);
-
-  const getPlaceholder = () => {
-    if (formType === XrmEnum.FormType.Create) {
-      if (!outputSelectedItems) {
-        return languagePack.CreateFormNotSupportedMessage;
-      }
-    } else if (formType !== XrmEnum.FormType.Update) {
-      return languagePack.ControlIsNotAvailableMessage;
-    }
-
-    if (isDataLoading) {
-      return languagePack.LoadingMessage;
-    }
-
-    if (isError) {
-      if (errorLookupView instanceof Error) {
-        return languagePack.InvalidLookupViewMessage;
-      }
-
-      return languagePack.GenericErrorMessage;
-    }
-
-    if (selectedOptions?.length || disabled) {
-      return "";
-    }
-
-    return metadata?.associatedEntity.DisplayCollectionNameLocalized
-      ? sprintf(languagePack.Placeholder, metadata?.associatedEntity.DisplayCollectionNameLocalized)
-      : languagePack.PlaceholderDefault;
-  };
 
   const handleOnOptionSelect: TagPickerProps["onOptionSelect"] = (_e, { value, selectedOptions }) => {
     if (itemLimit && (selectedOptions?.length ?? 0) > itemLimit) {
@@ -350,62 +297,18 @@ export default function PolyLookupControlNewLook({
       });
   };
 
-  const placeholder = getPlaceholder();
-
-  const renderOptionList = () => {
-    if (!optionList?.length) {
-      return (
-        <div className={optionListFooter}>
-          <Text>{isLoadingEntityOptions ? languagePack.LoadingMessage : languagePack.EmptyListDefaultMessage}</Text>
-        </div>
-      );
-    }
-
-    return (
-      <div>
-        <div className={listBox}>
-          {optionList?.map((option) => (
-            <TagPickerOption
-              media={
-                showIcon ? (
-                  <Avatar
-                    className={transparentBackground}
-                    size={showIcon === ShowIconOptions.EntityIcon ? 16 : 28}
-                    shape="square"
-                    name={showIcon === ShowIconOptions.EntityIcon ? "" : option.optionText}
-                    image={{
-                      className: transparentBackground,
-                      src:
-                        showIcon === ShowIconOptions.EntityIcon
-                          ? metadata?.associatedEntity.EntityIconUrl
-                          : option.iconSrc,
-                    }}
-                    color={showIcon === ShowIconOptions.EntityIcon ? "neutral" : "colorful"}
-                    aria-hidden
-                  />
-                ) : undefined
-              }
-              key={option.id}
-              value={option.id}
-              text={option.optionText}
-            >
-              <SuggestionInfo
-                data={option}
-                columns={lookupViewConfig?.columns ?? []}
-                showOptionDetails={showOptionDetails ?? ShowOptionDetailsEnum.Collapsed}
-              />
-            </TagPickerOption>
-          ))}
-        </div>
-        <Divider />
-        <div className={optionListFooter}>
-          <Text>
-            {entityOptions?.moreRecords ? languagePack.SuggestionListFullMessage : languagePack.NoMoreRecordsMessage}
-          </Text>
-        </div>
-      </div>
-    );
-  };
+  const placeholder = getPlaceholder(
+    isAuthoringMode ?? false,
+    formType ?? XrmEnum.FormType.Undefined,
+    outputSelectedItems ?? false,
+    isDataLoading,
+    isError,
+    errorLookupView,
+    selectedOptions?.length ?? 0,
+    disabled ?? false,
+    metadata?.associatedEntity.DisplayCollectionNameLocalized,
+    languagePack
+  );
 
   return (
     <FluentProvider style={{ width: "100%" }} theme={fluentDesign?.tokenTheme}>
@@ -481,7 +384,18 @@ export default function PolyLookupControlNewLook({
         {disabled || !isSupported || (itemLimit !== undefined && (selectedOptions?.length ?? 0) >= itemLimit) ? (
           <></>
         ) : (
-          <TagPickerList>{renderOptionList()}</TagPickerList>
+          <TagPickerList>
+            <OptionList
+              options={optionList}
+              columns={lookupViewConfig?.columns ?? []}
+              languagePack={languagePack}
+              isLoading={isLoadingEntityOptions}
+              hasMoreRecords={entityOptions?.moreRecords}
+              showIcon={showIcon}
+              entityIconUrl={metadata?.associatedEntity.EntityIconUrl}
+              showOptionDetails={showOptionDetails}
+            />
+          </TagPickerList>
         )}
       </TagPicker>
     </FluentProvider>

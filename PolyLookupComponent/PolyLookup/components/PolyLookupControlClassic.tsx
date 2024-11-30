@@ -16,15 +16,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import Handlebars from "handlebars";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sprintf } from "sprintf-js";
-import {
-  useAssociateQuery,
-  useDisassociateQuery,
-  useFilterQuery,
-  useLanguagePack,
-  useLookupViewConfig,
-  useMetadata,
-  useSelectedItems,
-} from "../services/DataverseService";
 import { IMetadata } from "../types/metadata";
 import {
   EntityOption,
@@ -36,6 +27,14 @@ import {
   TagAction,
 } from "../types/typings";
 import { SuggestionInfo } from "./SuggestionInfo";
+import { useFilterOptions } from "../hooks/queries/useFilterOptions";
+import { useAssociate } from "../hooks/mutations/useAssociate";
+import { useDisassociate } from "../hooks/mutations/useDisassociate";
+import { useLanguagePack } from "../hooks/queries/useLanguagePack";
+import { useLookupViewConfig } from "../hooks/queries/useLookupViewConfig";
+import { useMetadata } from "../hooks/queries/useMetadata";
+import { useSelectedItems } from "../hooks/queries/useSelectedItems";
+import { getPlaceholder } from "../utils";
 
 interface ITagWithData extends ITag {
   data: EntityOption;
@@ -52,7 +51,6 @@ export default function PolyLookupControlClassic({
   itemLimit,
   pageSize,
   disabled,
-  formType,
   outputSelectedItems,
   showIcon,
   tagAction,
@@ -60,6 +58,8 @@ export default function PolyLookupControlClassic({
   showOptionDetails,
   defaultLanguagePack,
   languagePackPath,
+  isAuthoringMode,
+  formType,
   onChange,
   onQuickCreate,
 }: PolyLookupProps) {
@@ -139,17 +139,11 @@ export default function PolyLookupControlClassic({
     );
   }, [isFetchingSelectedItems, isLoadingSelectedItemsSuccess, onChange]);
 
-  const { mutateAsync: filterQueryAsync } = useFilterQuery(metadata, lookupViewConfig);
+  const { mutateAsync: filterQueryAsync } = useFilterOptions(metadata, lookupViewConfig);
 
-  const { mutate: associateQuery } = useAssociateQuery(
-    metadata,
-    currentRecordId,
-    relationshipType,
-    clientUrl,
-    languagePack
-  );
+  const { mutate: associateQuery } = useAssociate(metadata, currentRecordId, relationshipType, clientUrl, languagePack);
 
-  const { mutate: disassociateQuery } = useDisassociateQuery(metadata, currentRecordId, relationshipType, languagePack);
+  const { mutate: disassociateQuery } = useDisassociate(metadata, currentRecordId, relationshipType, languagePack);
 
   const filterSuggestions = useCallback(
     async (filterText: string, selectedTags?: ITag[]): Promise<ITag[]> => {
@@ -340,36 +334,6 @@ export default function PolyLookupControlClassic({
     }
   };
 
-  const getPlaceholder = () => {
-    if (formType === XrmEnum.FormType.Create) {
-      if (!outputSelectedItems) {
-        return languagePack.CreateFormNotSupportedMessage;
-      }
-    } else if (formType !== XrmEnum.FormType.Update) {
-      return languagePack.ControlIsNotAvailableMessage;
-    }
-
-    if (isDataLoading) {
-      return languagePack.LoadingMessage;
-    }
-
-    if (isError) {
-      if (errorLookupView instanceof Error) {
-        return languagePack.InvalidLookupViewMessage;
-      }
-
-      return languagePack.GenericErrorMessage;
-    }
-
-    if (selectedItems?.length || selectedItemsCreate.length || disabled) {
-      return "";
-    }
-
-    return metadata?.associatedEntity.DisplayCollectionNameLocalized
-      ? sprintf(languagePack.Placeholder, metadata?.associatedEntity.DisplayCollectionNameLocalized)
-      : languagePack.PlaceholderDefault;
-  };
-
   const shouldDisable = () => {
     if (formType === XrmEnum.FormType.Create) {
       if (!outputSelectedItems) {
@@ -393,6 +357,19 @@ export default function PolyLookupControlClassic({
       ? sprintf(languagePack.EmptyListMessage, metadata.associatedEntity.DisplayCollectionNameLocalized)
       : languagePack.EmptyListDefaultMessage;
   }
+
+  const placeholder = getPlaceholder(
+    isAuthoringMode ?? false,
+    formType ?? XrmEnum.FormType.Undefined,
+    outputSelectedItems ?? false,
+    isDataLoading,
+    isError,
+    errorLookupView,
+    selectedItems?.length ?? selectedItemsCreate.length ?? 0,
+    disabled ?? false,
+    metadata?.associatedEntity.DisplayCollectionNameLocalized,
+    languagePack
+  );
 
   return (
     <TagPicker
@@ -536,7 +513,7 @@ export default function PolyLookupControlClassic({
       }}
       resolveDelay={100}
       inputProps={{
-        placeholder: getPlaceholder(),
+        placeholder: placeholder,
       }}
       pickerCalloutProps={{
         calloutMaxWidth: 500,
