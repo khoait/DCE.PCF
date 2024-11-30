@@ -20,10 +20,12 @@ import {
 import { AddRegular, MoreVerticalRegular, OpenRegular, SearchRegular } from "@fluentui/react-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useEffect, useState } from "react";
-import { useEntityOptions, useLanguagePack, useMetadata } from "../services/DataverseService";
 import { getCustomFilterString, getHandlebarsVariables } from "../services/TemplateService";
 import { EntityOption, LookdownControlProps, OpenRecordMode } from "../types/typings";
 import { useAttributeOnChange } from "../hooks/useAttributeOnChange";
+import { useEntityOptions } from "../hooks/queries/useEntityOptions";
+import { useLanguagePack } from "../hooks/queries/useLanguagePack";
+import { useMetadata } from "../hooks/queries/useMetadata";
 
 const useStyle = makeStyles({
   root: {
