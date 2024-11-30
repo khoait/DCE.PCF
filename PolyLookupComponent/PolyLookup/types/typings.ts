@@ -11,7 +11,6 @@ export interface PolyLookupProps {
   itemLimit?: number;
   pageSize?: number;
   disabled?: boolean;
-  formType?: XrmEnum.FormType;
   outputSelectedItems?: boolean;
   showIcon?: ShowIconOptions;
   tagAction?: TagAction;
@@ -19,6 +18,8 @@ export interface PolyLookupProps {
   showOptionDetails?: ShowOptionDetailsEnum;
   defaultLanguagePack: LanguagePack;
   languagePackPath?: string;
+  isAuthoringMode?: boolean;
+  formType?: XrmEnum.FormType;
   fluentDesign?: ComponentFramework.FluentDesignState;
   onChange?: (selectedItems: EntityReference[] | undefined) => void;
   onQuickCreate?: (

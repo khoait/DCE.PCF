@@ -118,7 +118,6 @@ export class PolyLookup implements ComponentFramework.StandardControl<IInputs, I
       itemLimit: this.context.parameters.itemLimit?.raw ?? undefined,
       pageSize: this.context.userSettings?.pagingLimit ?? undefined,
       disabled: this.context.mode.isControlDisabled,
-      formType: typeof Xrm === "undefined" ? undefined : Xrm.Page.ui.getFormType(),
       outputSelectedItems: !!this.context.parameters.outputField?.attributes?.LogicalName,
       showIcon: this.context.parameters.showIcon?.raw
         ? (Number.parseInt(this.context.parameters.showIcon.raw) as ShowIconOptions)
@@ -132,6 +131,8 @@ export class PolyLookup implements ComponentFramework.StandardControl<IInputs, I
         : undefined,
       defaultLanguagePack: this.languagePack,
       languagePackPath: this.context.parameters.languagePackPath?.raw ?? undefined,
+      formType: typeof Xrm === "undefined" ? undefined : Xrm.Page.ui.getFormType(),
+      isAuthoringMode: this.context.mode.isAuthoringMode,
       fluentDesign: this.context.fluentDesignLanguage,
       onChange:
         this.context.parameters.outputSelected?.raw === "1" ||

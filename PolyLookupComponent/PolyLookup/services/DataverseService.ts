@@ -66,147 +66,6 @@ const DEFAULT_HEADERS = {
 const parser = new DOMParser();
 const serializer = new XMLSerializer();
 
-export function useMetadata(currentTable: string, relationshipName: string, relationship2Name: string | undefined) {
-  return useQuery({
-    queryKey: ["metadata", currentTable, relationshipName, relationship2Name],
-    queryFn: () => getMetadata(currentTable, relationshipName, relationship2Name),
-    enabled: !!currentTable && !!relationshipName,
-  });
-}
-
-export function useLookupViewConfig(
-  associatedEntityName: string | undefined,
-  primaryIdAttribute: string | undefined,
-  primaryNameAttribute: string | undefined,
-  lookupViewValue: string | undefined
-) {
-  return useQuery({
-    queryKey: ["lookupViewConfig", associatedEntityName, lookupViewValue],
-    queryFn: () => getLookupViewConfig(associatedEntityName, primaryIdAttribute, primaryNameAttribute, lookupViewValue),
-    enabled: !!associatedEntityName && !!primaryIdAttribute && !!primaryNameAttribute,
-  });
-}
-
-export function useSelectedItems(
-  metadata: IMetadata | undefined,
-  currentRecordId: string,
-  formType: XrmEnum.FormType | undefined,
-  firstViewColumn?: string,
-  selectedItemTemplate?: string | null
-) {
-  return useQuery({
-    queryKey: ["selectedItems", metadata, currentRecordId, formType, firstViewColumn, selectedItemTemplate],
-    queryFn: () => {
-      if (!metadata || !currentRecordId || formType === XrmEnum.FormType.Create) {
-        return [];
-      }
-
-      return retrieveAssociatedRecords(metadata, currentRecordId, firstViewColumn, selectedItemTemplate);
-    },
-    enabled: !!metadata?.intersectEntity.EntitySetName && !!metadata?.associatedEntity.EntitySetName,
-  });
-}
-
-export function useEntityOptions(
-  metadata: IMetadata | undefined,
-  lookupViewConfig: LookupView | undefined,
-  searchText?: string,
-  pageSize?: number
-) {
-  return useQuery({
-    queryKey: ["entityOptions", lookupViewConfig, searchText],
-    queryFn: () => getEntityOptions(metadata, lookupViewConfig, searchText, pageSize),
-    enabled: !!lookupViewConfig?.fetchXml,
-  });
-}
-
-export function useLanguagePack(webResourcePath: string | undefined, defaultLanguagePack: LanguagePack) {
-  return useQuery({
-    queryKey: ["languagePack", webResourcePath],
-    queryFn: () => getLanguagePack(webResourcePath, defaultLanguagePack),
-    enabled: !!webResourcePath,
-  });
-}
-
-export function useFilterQuery(metadata: IMetadata | undefined, lookupViewConfig: LookupView | undefined) {
-  return useMutation({
-    mutationFn: ({ searchText, pageSizeParam }: { searchText?: string; pageSizeParam?: number }) =>
-      getEntityOptions(metadata, lookupViewConfig, searchText, pageSizeParam),
-  });
-}
-
-export function useAssociateQuery(
-  metadata: IMetadata | undefined,
-  currentRecordId: string,
-  relationshipType: RelationshipTypeEnum,
-  clientUrl: string,
-  languagePack: LanguagePack
-) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => {
-      if (relationshipType === RelationshipTypeEnum.ManyToMany) {
-        return associateRecord(
-          metadata?.currentEntity.EntitySetName,
-          currentRecordId,
-          metadata?.associatedEntity?.EntitySetName,
-          id,
-          metadata?.relationship1.SchemaName,
-          clientUrl
-        );
-      } else if (
-        relationshipType === RelationshipTypeEnum.Custom ||
-        relationshipType === RelationshipTypeEnum.Connection
-      ) {
-        return createRecord(metadata?.intersectEntity.EntitySetName, {
-          [`${metadata?.currentEntityNavigationPropertyName}@odata.bind`]: `/${metadata?.currentEntity
-            .EntitySetName}(${currentRecordId.replace("{", "").replace("}", "")})`,
-          [`${metadata?.associatedEntityNavigationPropertyName}@odata.bind`]: `/${metadata?.associatedEntity
-            .EntitySetName}(${id.replace("{", "").replace("}", "")})`,
-        });
-      }
-      return Promise.reject(languagePack.RelationshipNotSupportedMessage);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["selectedItems"],
-      });
-    },
-  });
-}
-
-export function useDisassociateQuery(
-  metadata: IMetadata | undefined,
-  currentRecordId: string,
-  relationshipType: RelationshipTypeEnum,
-  languagePack: LanguagePack
-) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => {
-      if (relationshipType === RelationshipTypeEnum.ManyToMany) {
-        return disassociateRecord(
-          metadata?.currentEntity?.EntitySetName,
-          currentRecordId,
-          metadata?.relationship1.SchemaName,
-          id
-        );
-      } else if (
-        relationshipType === RelationshipTypeEnum.Custom ||
-        relationshipType === RelationshipTypeEnum.Connection
-      ) {
-        return deleteRecord(metadata?.intersectEntity.EntitySetName, id);
-      }
-      return Promise.reject(languagePack.RelationshipNotSupportedMessage);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["selectedItems"],
-      });
-    },
-  });
-}
-
 export async function getEntityOptions(
   metadata: IMetadata | undefined,
   lookupViewConfig: LookupView | undefined,
@@ -307,7 +166,10 @@ export async function getEntityOptions(
   };
 }
 
-function getLanguagePack(webResourceUrl: string | undefined, defaultLanguagePack: LanguagePack): Promise<LanguagePack> {
+export function getLanguagePack(
+  webResourceUrl: string | undefined,
+  defaultLanguagePack: LanguagePack
+): Promise<LanguagePack> {
   const languagePack: LanguagePack = { ...defaultLanguagePack };
 
   if (webResourceUrl === undefined) return Promise.resolve(languagePack);
@@ -453,7 +315,7 @@ export async function getDefaultView(entityName: string | undefined, viewName: s
   return defaultView;
 }
 
-async function getMetadata(
+export async function getMetadata(
   currentTable: string | undefined,
   relationshipName: string | undefined,
   relationship2Name: string | undefined
@@ -525,7 +387,7 @@ async function getMetadata(
   }
 }
 
-async function getLookupViewConfig(
+export async function getLookupViewConfig(
   associatedEntityName: string | undefined,
   primaryIdAttribute: string | undefined,
   primaryNameAttribute: string | undefined,
