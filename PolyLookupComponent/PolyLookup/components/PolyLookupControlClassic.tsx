@@ -132,7 +132,7 @@ export default function PolyLookupControlClassic({
       selectedItems?.map((i) => {
         return {
           id: i.associatedId,
-          name: i.associatedName,
+          name: i.selectedOptionText,
           etn: metadata?.associatedEntity.LogicalName ?? "",
         } as EntityReference;
       })
