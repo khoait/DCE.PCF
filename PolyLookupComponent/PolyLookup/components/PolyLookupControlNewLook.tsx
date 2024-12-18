@@ -68,6 +68,11 @@ const useStyle = makeStyles({
   transparentBackground: {
     backgroundColor: tokens.colorTransparentBackground,
   },
+  truncatedText: {
+    whiteSpace: "nowrap",
+    overflowX: "hidden",
+    textOverflow: "ellipsis",
+  },
 });
 
 export default function PolyLookupControlNewLook({
@@ -95,8 +100,16 @@ export default function PolyLookupControlNewLook({
   onQuickCreate,
 }: PolyLookupProps) {
   const queryClient = useQueryClient();
-  const { tagGroup, marginLeft, underline, borderTransparent, tagFontSize, iconFontSize, transparentBackground } =
-    useStyle();
+  const {
+    tagGroup,
+    marginLeft,
+    underline,
+    borderTransparent,
+    tagFontSize,
+    iconFontSize,
+    transparentBackground,
+    truncatedText,
+  } = useStyle();
 
   const tagStyle = mergeClasses(!!tagAction && underline);
   const iconStyle = mergeClasses(borderTransparent, iconFontSize);
@@ -359,6 +372,9 @@ export default function PolyLookupControlNewLook({
                       />
                     ) : undefined
                   }
+                  primaryText={{
+                    className: truncatedText,
+                  }}
                   onClick={() => handleOnItemClick(i)}
                 >
                   <span className={tagFontSize}>{i.selectedOptionText}</span>
