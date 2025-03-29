@@ -164,17 +164,25 @@ export async function getEntityRecords(
   primaryIdAttribute: string,
   primaryNameAttribute: string,
   fetchXml: string,
+  customFilter?: string | null,
   groupBy?: string | null,
   optionTemplate?: string | null,
-  selectedOptionTemplate?: string | null,
   iconOptions?: ShowIconOptions,
   iconTemplate?: string | null,
   iconSize?: IconSizes
 ) {
-  const results = await retrieveMultipleFetch(entitySetName, fetchXml, groupBy);
+  const templateColumns: string[] = [];
+  if (primaryNameAttribute) {
+    templateColumns.push(primaryNameAttribute);
+  }
+  if (optionTemplate) {
+    templateColumns.push(...getHandlebarsVariables(optionTemplate ?? ""));
+  }
+  const populatedFetchXml = getFetchTemplateString(fetchXml ?? "", customFilter, templateColumns);
+
+  const results = await retrieveMultipleFetch(entitySetName, populatedFetchXml, groupBy);
 
   const optionTemplateFn = optionTemplate ? Handlebars.compile(optionTemplate) : null;
-  const selectedOpionTemplateFn = selectedOptionTemplate ? Handlebars.compile(selectedOptionTemplate) : null;
 
   const iconTemplateFn =
     iconTemplate && iconOptions === ShowIconOptions.RecordImage ? Handlebars.compile(iconTemplate) : null;
@@ -190,7 +198,6 @@ export async function getEntityRecords(
       id: record[primaryIdAttribute],
       primaryName: record[primaryNameAttribute],
       optionText: optionTemplateFn?.(record) ?? record[primaryNameAttribute],
-      selectedOptionText: selectedOpionTemplateFn?.(record) ?? record[primaryNameAttribute],
       iconSrc,
       iconSize: iconSize === IconSizes.Large ? 32 : 16,
       group: record[groupBy ?? ""],
@@ -231,6 +238,73 @@ async function retrieveMultipleFetch(entitySetName: string, fetchXml: string, gr
       });
 
       return res.data.value;
+    });
+}
+
+export async function getSelectedEntityOption(
+  entitySetName: string,
+  entityId: string | null | undefined,
+  primaryIdAttribute: string,
+  primaryNameAttribute: string,
+  optionTemplate?: string | null,
+  iconOptions?: ShowIconOptions,
+  iconTemplate?: string | null,
+  iconSize?: IconSizes
+) {
+  if (!entityId) return Promise.resolve(null);
+
+  const templateColumns: string[] = [];
+  if (primaryNameAttribute) {
+    templateColumns.push(primaryNameAttribute);
+  }
+  if (optionTemplate) {
+    templateColumns.push(...getHandlebarsVariables(optionTemplate));
+  }
+
+  const record = await retrieveRecord(entitySetName, entityId, templateColumns);
+
+  if (!record) return null;
+
+  const optionTemplateFn = optionTemplate ? Handlebars.compile(optionTemplate) : null;
+
+  const iconTemplateFn =
+    iconTemplate && iconOptions === ShowIconOptions.RecordImage ? Handlebars.compile(iconTemplate) : null;
+
+  let iconSrc = "";
+  if (iconOptions === ShowIconOptions.EntityIcon) {
+    iconSrc = iconTemplate ?? "";
+  } else if (iconOptions === ShowIconOptions.RecordImage) {
+    iconSrc = iconTemplateFn?.(record) ?? "";
+  }
+  return {
+    id: record[primaryIdAttribute],
+    primaryName: record[primaryNameAttribute],
+    optionText: optionTemplateFn?.(record) ?? record[primaryNameAttribute],
+    iconSrc,
+    iconSize: iconSize === IconSizes.Large ? 32 : 16,
+    group: "",
+  } as EntityOption;
+}
+
+export async function retrieveRecord(entitySetName: string, entityId: string, columns: string[]) {
+  if (!entitySetName || !entityId) return Promise.reject(new Error("Invalid entity set name or entityId"));
+
+  return axios
+    .get<ComponentFramework.WebApi.Entity>(`/api/data/v${apiVersion}/${entitySetName}(${entityId})`, {
+      headers: DEFAULT_HEADERS,
+      params: {
+        $select: columns.join(","),
+      },
+    })
+    .then((res) => {
+      // overwrite with formatted values
+      Object.keys(res.data).forEach((key) => {
+        if (!key.endsWith("@OData.Community.Display.V1.FormattedValue")) {
+          res.data[key] = getAttributeFormattedValue(res.data, key);
+        }
+      });
+
+      return res.data;
     });
 }
 

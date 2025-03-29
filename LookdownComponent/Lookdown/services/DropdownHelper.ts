@@ -4,6 +4,7 @@ import { EntityOption } from "../types/typings";
 
 export function getClassicDropdownOptions(
   entityOptions: EntityOption[],
+  selectedOption: EntityOption | null | undefined,
   groupBy: string | null,
   languagePack: LanguagePack
 ) {
@@ -49,6 +50,15 @@ export function getClassicDropdownOptions(
       key: "no-records",
       text: languagePack?.EmptyListMessage ?? "",
       disabled: true,
+    });
+  }
+
+  if (selectedOption && !options.some((o) => o.key === selectedOption.id)) {
+    options.push({
+      key: selectedOption.id,
+      text: selectedOption.optionText,
+      data: selectedOption,
+      hidden: true,
     });
   }
 

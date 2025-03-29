@@ -19,13 +19,14 @@ import {
 } from "@fluentui/react-components";
 import { AddRegular, MoreVerticalRegular, OpenRegular, SearchRegular } from "@fluentui/react-icons";
 import { useQueryClient } from "@tanstack/react-query";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { MouseEventHandler, useCallback, useEffect, useState } from "react";
 import { getCustomFilterString, getHandlebarsVariables } from "../services/TemplateService";
-import { EntityOption, LookdownControlProps, OpenRecordMode } from "../types/typings";
+import { EntityOption, IconSizes, LookdownControlProps, OpenRecordMode, ShowIconOptions } from "../types/typings";
 import { useAttributeOnChange } from "../hooks/useAttributeOnChange";
 import { useEntityOptions } from "../hooks/queries/useEntityOptions";
 import { useLanguagePack } from "../hooks/queries/useLanguagePack";
 import { useMetadata } from "../hooks/queries/useMetadata";
+import { getSelectedItemQueryOptions, useSelectedItem } from "../hooks/queries/useSelectedItem";
 
 const useStyle = makeStyles({
   root: {
@@ -103,48 +104,28 @@ export default function LookdownControlNewLook({
 
   const { data: metadata, isError: isErrorMetadata } = useMetadata(lookupEntity ?? "", lookupViewId ?? "");
 
+  const { data: selectedOption, isError: isErrorSelectedOption } = useSelectedItem(
+    metadata,
+    selectedId,
+    selectedItemTemplate,
+    showIcon,
+    iconSize
+  );
+
   const { data: entityOptions, isError: isErrorEntityOptions } = useEntityOptions(
     metadata,
     customFilter,
     groupBy,
     optionTemplate,
-    selectedItemTemplate,
     showIcon,
     iconSize
   );
 
   useAttributeOnChange(metadata, customFilter);
 
-  const isError = isErrorLanguagePack || isErrorMetadata || isErrorEntityOptions;
+  const isError = isErrorLanguagePack || isErrorMetadata || isErrorSelectedOption || isErrorEntityOptions;
 
   const dropdownStyles = mergeClasses(styles.dropdown, styles.flexFill, (disabled || isError) && styles.disabled);
-
-  useEffect(() => {
-    if (selectedId && entityOptions) {
-      const selectionItem = entityOptions.find((item) => item.id === selectedId);
-
-      if (selectionItem) {
-        setSelectedValues([selectedId]);
-        setSelectedDisplayText(selectionItem?.selectedOptionText);
-        return;
-      }
-    }
-
-    setSelectedValues([]);
-    setSelectedDisplayText(selectedText ?? "");
-  }, [selectedId, selectedText, entityOptions]);
-
-  const getSelectedOptionDisplay = () => {
-    const selectedOption = entityOptions?.find((item) => item.id === selectedValues.at(0));
-    if (!selectedOption) return <span>---</span>;
-    return (
-      <OptionDisplay
-        optionText={selectedOption.optionText}
-        iconSrc={selectedOption.iconSrc}
-        iconSize={selectedOption.iconSize}
-      />
-    );
-  };
 
   const handleOptionSelect: DropdownProps["onOptionSelect"] = (ev, data) => {
     setSelectedValues(data.selectedOptions);
@@ -169,7 +150,7 @@ export default function LookdownControlNewLook({
         } as ComponentFramework.LookupValue;
 
         setSelectedValues([selectionItem.id]);
-        setSelectedDisplayText(selectionItem?.selectedOptionText);
+        setSelectedDisplayText(selectionItem?.optionText);
       } else {
         setSelectedValues([]);
         setSelectedDisplayText("");
@@ -254,11 +235,42 @@ export default function LookdownControlNewLook({
   const renderOptions = () => {
     if (!entityOptions) return null;
 
+    const entityIcon =
+      metadata?.lookupEntity.IconVectorName ??
+      (iconSize === IconSizes.Large
+        ? metadata?.lookupEntity.IconMediumName ?? metadata?.lookupEntity.IconSmallName
+        : metadata?.lookupEntity.IconSmallName);
+
+    let iconTemplate = "";
+    if (showIcon === ShowIconOptions.RecordImage) {
+      iconTemplate = metadata?.lookupEntity.RecordImageUrlTemplate ?? "";
+    } else if (showIcon === ShowIconOptions.EntityIcon) {
+      iconTemplate = entityIcon ?? "";
+    }
+
     if (!groupBy) {
       return entityOptions.map((item) => {
         return (
-          <Option key={item.id} value={item.id} text={item.selectedOptionText}>
-            <OptionDisplay optionText={item.optionText} iconSrc={item.iconSrc} iconSize={item.iconSize} />
+          <Option key={item.id} value={item.id} text={item.optionText}>
+            <OptionDisplay
+              optionText={item.optionText}
+              iconSrc={item.iconSrc}
+              iconSize={item.iconSize}
+              onMouseEnter={() =>
+                queryClient.prefetchQuery(
+                  getSelectedItemQueryOptions(
+                    metadata?.lookupEntity.EntitySetName ?? "",
+                    item.id,
+                    metadata?.lookupEntity.PrimaryIdAttribute ?? "",
+                    metadata?.lookupEntity.PrimaryNameAttribute ?? "",
+                    selectedItemTemplate,
+                    showIcon,
+                    iconTemplate,
+                    iconSize
+                  )
+                )
+              }
+            />
           </Option>
         );
       });
@@ -278,8 +290,26 @@ export default function LookdownControlNewLook({
         <OptionGroup key={key} label={key}>
           {grouped[key].map((item) => {
             return (
-              <Option key={item.id} value={item.id} text={item.selectedOptionText}>
-                <OptionDisplay optionText={item.optionText} iconSrc={item.iconSrc} iconSize={item.iconSize} />
+              <Option key={item.id} value={item.id} text={item.optionText}>
+                <OptionDisplay
+                  optionText={item.optionText}
+                  iconSrc={item.iconSrc}
+                  iconSize={item.iconSize}
+                  onMouseEnter={() =>
+                    queryClient.prefetchQuery(
+                      getSelectedItemQueryOptions(
+                        metadata?.lookupEntity.EntitySetName ?? "",
+                        item.id,
+                        metadata?.lookupEntity.PrimaryIdAttribute ?? "",
+                        metadata?.lookupEntity.PrimaryNameAttribute ?? "",
+                        selectedItemTemplate,
+                        showIcon,
+                        iconTemplate,
+                        iconSize
+                      )
+                    )
+                  }
+                />
               </Option>
             );
           })}
@@ -299,7 +329,13 @@ export default function LookdownControlNewLook({
           placeholder={isError ? languagePack.LoadDataErrorMessage : "---"}
           value={isError ? "" : selectedDisplayText}
           selectedOptions={isError ? [] : selectedValues}
-          button={getSelectedOptionDisplay()}
+          button={
+            <OptionDisplay
+              optionText={selectedOption?.optionText ?? ""}
+              iconSrc={selectedOption?.iconSrc}
+              iconSize={selectedOption?.iconSize}
+            />
+          }
           expandIcon={disabled || isError ? { className: styles.hidden } : undefined}
           onOptionSelect={handleOptionSelect}
         >
@@ -342,14 +378,15 @@ interface OptionDisplayProps {
   optionText: string;
   iconSrc?: string;
   iconSize?: number;
+  onMouseEnter?: MouseEventHandler<HTMLDivElement> | undefined;
 }
 
-function OptionDisplay({ optionText, iconSrc, iconSize }: OptionDisplayProps) {
+function OptionDisplay({ optionText, iconSrc, iconSize, onMouseEnter }: OptionDisplayProps) {
   const styles = useStyle();
   const optionTextStyles = mergeClasses(styles.flexFill, styles.breakWord);
 
   return (
-    <div className={styles.optionLayout}>
+    <div className={styles.optionLayout} onMouseEnter={onMouseEnter}>
       {iconSrc && iconSize ? (
         <div style={{ width: iconSize, height: iconSize }}>
           <Image fit="cover" src={iconSrc}></Image>
