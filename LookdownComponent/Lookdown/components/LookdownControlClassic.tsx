@@ -22,6 +22,7 @@ import { useAttributeOnChange } from "../hooks/useAttributeOnChange";
 import { useEntityOptions } from "../hooks/queries/useEntityOptions";
 import { useLanguagePack } from "../hooks/queries/useLanguagePack";
 import { useMetadata } from "../hooks/queries/useMetadata";
+import { useSelectedItem } from "../hooks/queries/useSelectedItem";
 
 const DEFAULT_BORDER_STYLES: IStyle = {
   borderColor: "#666",
@@ -105,19 +106,26 @@ export default function LookdownControlClassic({
 
   const { data: metadata, isError: isErrorMetadata } = useMetadata(lookupEntity ?? "", lookupViewId ?? "");
 
+  const { data: selectedOption, isError: isErrorSelectedOption } = useSelectedItem(
+    metadata,
+    selectedId,
+    selectedItemTemplate,
+    showIcon,
+    iconSize
+  );
+
   const { data: entityOptions, isError: isErrorEntityOptions } = useEntityOptions(
     metadata,
     customFilter,
     groupBy,
     optionTemplate,
-    selectedItemTemplate,
     showIcon,
     iconSize
   );
 
   useAttributeOnChange(metadata, customFilter);
 
-  const isError = isErrorLanguagePack || isErrorMetadata || isErrorEntityOptions;
+  const isError = isErrorLanguagePack || isErrorMetadata || isErrorSelectedOption || isErrorEntityOptions;
 
   const onRenderOption = (
     option?: IDropdownOption<EntityOption>,
@@ -171,7 +179,7 @@ export default function LookdownControlClassic({
             height={option.data.iconSize}
           ></Image>
         ) : null}
-        <Label styles={selectionOptionLabelStyles}>{option.data?.selectedOptionText}</Label>
+        <Label styles={selectionOptionLabelStyles}>{option.data?.optionText}</Label>
       </Stack>
     );
   };
@@ -292,7 +300,7 @@ export default function LookdownControlClassic({
         <Dropdown
           selectedKey={isError ? null : selectedId ?? null}
           placeholder={isError ? languagePack.LoadDataErrorMessage : "---"}
-          options={getClassicDropdownOptions(entityOptions ?? [], groupBy ?? null, languagePack)}
+          options={getClassicDropdownOptions(entityOptions ?? [], selectedOption, groupBy ?? null, languagePack)}
           disabled={isError ? true : disabled}
           onChange={(event, option) => {
             if (!onChange) return;

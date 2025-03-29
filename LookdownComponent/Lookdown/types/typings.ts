@@ -42,7 +42,6 @@ export interface EntityOption {
   id: string;
   primaryName: string;
   optionText: string;
-  selectedOptionText: string;
   iconSrc?: string;
   iconSize?: number;
   group?: string;

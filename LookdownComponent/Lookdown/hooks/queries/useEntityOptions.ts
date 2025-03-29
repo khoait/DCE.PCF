@@ -9,7 +9,6 @@ export function useEntityOptions(
   customFilter?: string | null,
   groupBy?: string | null,
   optionTemplate?: string | null,
-  selectedItemTemplate?: string | null,
   iconOptions?: ShowIconOptions,
   iconSize?: IconSizes
 ) {
@@ -32,34 +31,21 @@ export function useEntityOptions(
   }
 
   return useQuery({
-    queryKey: [
-      "entityRecords",
-      entitySetName,
-      lookupViewFetchXml,
-      customFilter,
-      groupBy,
-      optionTemplate,
-      selectedItemTemplate,
-    ],
-    queryFn: () => {
-      const templateColumns: string[] = [];
-      if (optionTemplate || selectedItemTemplate) {
-        templateColumns.push(...getHandlebarsVariables(optionTemplate ?? "" + " " + selectedItemTemplate ?? ""));
-      }
-      const populatedFetchXml = getFetchTemplateString(lookupViewFetchXml ?? "", customFilter, templateColumns);
-      return getEntityRecords(
+    queryKey: ["entityRecords", entitySetName, lookupViewFetchXml, customFilter, groupBy, optionTemplate],
+    queryFn: () =>
+      getEntityRecords(
         entitySetName,
         metadata?.lookupEntity.PrimaryIdAttribute ?? "",
         metadata?.lookupEntity.PrimaryNameAttribute ?? "",
-        populatedFetchXml,
+        lookupViewFetchXml,
+        customFilter,
         groupBy,
         optionTemplate,
-        selectedItemTemplate,
         iconOptions,
         iconTemplate,
         iconSize
-      );
-    },
+      ),
+
     enabled: !!entitySetName && !!lookupViewFetchXml,
   });
 }
