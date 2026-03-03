@@ -1,7 +1,7 @@
 import { FluentProvider, Theme, makeStyles, shorthands, tokens } from "@fluentui/react-components";
 import { Clock16Regular } from "@fluentui/react-icons";
 import { TimePicker, TimePickerProps, formatDateToTimeString } from "@fluentui/react-timepicker-compat";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { TimePickerControlProps } from "../types/typings";
 
 const useStyles = makeStyles({
@@ -35,18 +35,6 @@ export default function TimePickerControlNewLook({
       : ""
   );
 
-  const handleTimeChange: TimePickerProps["onTimeChange"] = (_ev, data) => {
-    setSelectedTime(data.selectedTime);
-    setValue(data.selectedTime && data.selectedTimeText ? data.selectedTimeText : "");
-    if (onTimeChange) {
-      onTimeChange(data.selectedTime);
-    }
-  };
-
-  const handleOnInput = (ev: React.ChangeEvent<HTMLInputElement>) => {
-    setValue(ev.target.value);
-  };
-
   let start: number | undefined;
   let end: number | undefined;
   if (startHour !== undefined) {
@@ -66,6 +54,26 @@ export default function TimePickerControlNewLook({
       end = 1;
     }
   }
+
+  const handleTimeChange: TimePickerProps["onTimeChange"] = (_ev, data) => {
+    setSelectedTime(data.selectedTime);
+    setValue(data.selectedTime && data.selectedTimeText ? data.selectedTimeText : "");
+    onTimeChange?.(data.selectedTime);
+  };
+
+  const handleOnInput = (ev: React.ChangeEvent<HTMLInputElement>) => {
+    setValue(ev.target.value);
+  };
+
+  // trigger onChange when dateAnchor changes
+  useEffect(() => {
+    if (selectedTime && dateAnchor) {
+      const newSelectedTime = new Date(selectedTime);
+      newSelectedTime.setFullYear(dateAnchor.getFullYear(), dateAnchor.getMonth(), dateAnchor.getDate());
+      setSelectedTime(newSelectedTime);
+      onTimeChange?.(newSelectedTime);
+    }
+  }, [dateAnchor]);
 
   return (
     <FluentProvider theme={fluentDesign?.tokenTheme}>
