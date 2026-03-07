@@ -76,7 +76,7 @@ export default function TimePickerControlNewLook({
       setSelectedTime(null);
       onTimeChange?.(null);
     }
-  }, [dateAnchor]);
+  }, [dateAnchor?.getFullYear(), dateAnchor?.getMonth(), dateAnchor?.getDate()]);
 
   const theme = fluentDesign?.tokenTheme;
   const currentTheme = disabled

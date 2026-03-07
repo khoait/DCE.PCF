@@ -154,16 +154,16 @@ export default function TimePickerControlClassic({
 
   // trigger onChange when dateAnchor changes
   useEffect(() => {
-    if (selectedTime && dateAnchor) {
+    if (selectedTime && dateAnchorValue) {
       const newSelectedTime = new Date(selectedTime);
-      newSelectedTime.setFullYear(dateAnchor.getFullYear(), dateAnchor.getMonth(), dateAnchor.getDate());
+      newSelectedTime.setFullYear(dateAnchorValue.getFullYear(), dateAnchorValue.getMonth(), dateAnchorValue.getDate());
       setSelectedTime(newSelectedTime);
       onTimeChange?.(newSelectedTime);
-    } else if (dateAnchor === null) {
+    } else if (dateAnchorValue === null) {
       setSelectedTime(null);
       onTimeChange?.(null);
     }
-  }, [dateAnchor]);
+  }, [dateAnchorValue.getFullYear(), dateAnchorValue.getMonth(), dateAnchorValue.getDate()]);
 
   return (
     <Stack horizontal styles={{ root: { width: "100%" } }}>
@@ -183,7 +183,15 @@ export default function TimePickerControlClassic({
           styles: { root: { height: "16px", fontSize: "16px" } },
         }}
       />
-      {selectedTime ? <IconButton iconProps={{ iconName: "Cancel" }} onClick={() => onTimeChange?.(null)} /> : null}
+      {selectedTime ? (
+        <IconButton
+          iconProps={{ iconName: "Cancel" }}
+          onClick={() => {
+            setSelectedTime(null);
+            onTimeChange?.(null);
+          }}
+        />
+      ) : null}
     </Stack>
   );
 }
