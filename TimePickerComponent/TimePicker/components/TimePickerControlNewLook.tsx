@@ -1,4 +1,4 @@
-import { FluentProvider, Theme, makeStyles, shorthands, tokens } from "@fluentui/react-components";
+import { FluentProvider, Input, Theme, makeStyles, shorthands, tokens } from "@fluentui/react-components";
 import { Clock16Regular } from "@fluentui/react-icons";
 import { TimePicker, TimePickerProps, formatDateToTimeString } from "@fluentui/react-timepicker-compat";
 import React, { useEffect, useState } from "react";
@@ -72,29 +72,46 @@ export default function TimePickerControlNewLook({
       newSelectedTime.setFullYear(dateAnchor.getFullYear(), dateAnchor.getMonth(), dateAnchor.getDate());
       setSelectedTime(newSelectedTime);
       onTimeChange?.(newSelectedTime);
+    } else if (dateAnchor === null) {
+      setSelectedTime(null);
+      onTimeChange?.(null);
     }
   }, [dateAnchor]);
 
+  const theme = fluentDesign?.tokenTheme;
+  const currentTheme = disabled
+    ? {
+        ...theme,
+        colorCompoundBrandStroke: theme?.colorNeutralStroke1,
+        colorCompoundBrandStrokeHover: theme?.colorNeutralStroke1Hover,
+        colorCompoundBrandStrokePressed: theme?.colorNeutralStroke1Pressed,
+        colorCompoundBrandStrokeSelected: theme?.colorNeutralStroke1Selected,
+      }
+    : theme;
+
   return (
-    <FluentProvider theme={fluentDesign?.tokenTheme}>
-      <TimePicker
-        className={styles.root}
-        appearance="filled-darker"
-        clearable
-        selectedTime={selectedTime}
-        value={value}
-        dateAnchor={dateAnchor ?? undefined}
-        disabled={disabled}
-        placeholder={placeholder}
-        increment={increment}
-        freeform={freeform ?? false}
-        hourCycle={hourCycle12 ? "h12" : "h23"}
-        startHour={start as any}
-        endHour={end as any}
-        onTimeChange={handleTimeChange}
-        onInput={freeform ? handleOnInput : undefined}
-        expandIcon={<Clock16Regular />}
-      />
+    <FluentProvider theme={currentTheme}>
+      {disabled ? (
+        <Input className={styles.root} appearance="filled-darker" readOnly value={value} />
+      ) : (
+        <TimePicker
+          className={styles.root}
+          appearance="filled-darker"
+          clearable
+          selectedTime={selectedTime}
+          value={value}
+          dateAnchor={dateAnchor ?? undefined}
+          placeholder={placeholder}
+          increment={increment}
+          freeform={freeform ?? false}
+          hourCycle={hourCycle12 ? "h12" : "h23"}
+          startHour={start as any}
+          endHour={end as any}
+          onTimeChange={handleTimeChange}
+          onInput={freeform ? handleOnInput : undefined}
+          expandIcon={<Clock16Regular />}
+        />
+      )}
     </FluentProvider>
   );
 }

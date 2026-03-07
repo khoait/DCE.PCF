@@ -68,18 +68,20 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
 
   public render(): void {
     const boundValue = this.convertToLocalDate(this.context.parameters.boundField);
-    const dateAnchor = this.convertToLocalDate(this.context.parameters.dateAnchor);
+    const dateAnchor = this.context.parameters.dateAnchor?.type
+      ? this.convertToLocalDate(this.context.parameters.dateAnchor)
+      : undefined;
 
     const props: TimePickerControlProps = {
       inputValue: boundValue,
-      dateAnchor: dateAnchor,
+      dateAnchor,
       disabled: this.context.mode.isControlDisabled,
-      placeholder: this.context.parameters.placeholder.raw ?? undefined,
-      increment: this.context.parameters.increment.raw ?? undefined,
-      hourCycle12: this.context.parameters.hourCycle12.raw === "1",
-      freeform: this.context.parameters.freeform.raw === "1",
-      startHour: this.context.parameters.startHour.raw ?? undefined,
-      endHour: this.context.parameters.endHour.raw ?? undefined,
+      placeholder: this.context.mode.isAuthoringMode ? "---" : (this.context.parameters.placeholder?.raw ?? undefined),
+      increment: this.context.parameters.increment?.raw ?? undefined,
+      hourCycle12: this.context.parameters.hourCycle12?.raw === "1",
+      freeform: this.context.parameters.freeform?.raw === "1",
+      startHour: this.context.parameters.startHour?.raw ?? undefined,
+      endHour: this.context.parameters.endHour?.raw ?? undefined,
       fluentDesign: this.context.fluentDesignLanguage,
       onTimeChange: (time) => {
         this.outputValue = time;
@@ -93,10 +95,10 @@ export class TimePicker implements ComponentFramework.StandardControl<IInputs, I
   }
 
   public convertToLocalDate(dateProperty: ComponentFramework.PropertyTypes.DateTimeProperty) {
+    if (!dateProperty?.raw) return null;
+
     if (dateProperty.attributes?.Behavior === 1) {
       // user local
-      if (!dateProperty.raw) return null;
-
       return convertDate(dateProperty.raw, this.context.userSettings.getTimeZoneOffsetMinutes(dateProperty.raw));
     } else {
       return getUtcDate(dateProperty.raw);

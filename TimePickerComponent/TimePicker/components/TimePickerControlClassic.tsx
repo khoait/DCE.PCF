@@ -159,6 +159,9 @@ export default function TimePickerControlClassic({
       newSelectedTime.setFullYear(dateAnchor.getFullYear(), dateAnchor.getMonth(), dateAnchor.getDate());
       setSelectedTime(newSelectedTime);
       onTimeChange?.(newSelectedTime);
+    } else if (dateAnchor === null) {
+      setSelectedTime(null);
+      onTimeChange?.(null);
     }
   }, [dateAnchor]);
 
