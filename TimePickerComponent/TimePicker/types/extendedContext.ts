@@ -6,4 +6,7 @@ interface IExtendedUserSettings extends ComponentFramework.UserSettings {
 
 export interface IExtendedContext extends ComponentFramework.Context<IInputs> {
   userSettings: IExtendedUserSettings;
+  mode: ComponentFramework.Mode & {
+    isAuthoringMode: boolean;
+  };
 }

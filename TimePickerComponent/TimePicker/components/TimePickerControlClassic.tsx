@@ -1,5 +1,5 @@
 import { IComboBoxStyles, IconButton, IStyle, ITimeRange, Stack, TimePicker } from "@fluentui/react";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { isValidDate } from "../services/dateService";
 import { TimePickerControlProps } from "../types/typings";
 
@@ -141,11 +141,35 @@ export default function TimePickerControlClassic({
     };
   }
 
+  // build dateAnchor from prop or selectedTime or current date at 0 hour
+  let dateAnchorValue: Date;
+  if (dateAnchor) {
+    dateAnchorValue = dateAnchor;
+  } else if (selectedTime) {
+    dateAnchorValue = new Date(selectedTime);
+  } else {
+    dateAnchorValue = new Date();
+  }
+  dateAnchorValue.setHours(0, 0, 0, 0);
+
+  // trigger onChange when dateAnchor changes
+  useEffect(() => {
+    if (selectedTime && dateAnchorValue) {
+      const newSelectedTime = new Date(selectedTime);
+      newSelectedTime.setFullYear(dateAnchorValue.getFullYear(), dateAnchorValue.getMonth(), dateAnchorValue.getDate());
+      setSelectedTime(newSelectedTime);
+      onTimeChange?.(newSelectedTime);
+    } else if (dateAnchorValue === null) {
+      setSelectedTime(null);
+      onTimeChange?.(null);
+    }
+  }, [dateAnchorValue.getFullYear(), dateAnchorValue.getMonth(), dateAnchorValue.getDate()]);
+
   return (
     <Stack horizontal styles={{ root: { width: "100%" } }}>
       <TimePicker
         value={selectedTime ?? undefined}
-        dateAnchor={dateAnchor ?? undefined}
+        dateAnchor={dateAnchorValue}
         disabled={disabled}
         placeholder={placeholder}
         increments={increment}
@@ -159,7 +183,15 @@ export default function TimePickerControlClassic({
           styles: { root: { height: "16px", fontSize: "16px" } },
         }}
       />
-      {selectedTime ? <IconButton iconProps={{ iconName: "Cancel" }} onClick={() => onTimeChange?.(null)} /> : null}
+      {selectedTime ? (
+        <IconButton
+          iconProps={{ iconName: "Cancel" }}
+          onClick={() => {
+            setSelectedTime(null);
+            onTimeChange?.(null);
+          }}
+        />
+      ) : null}
     </Stack>
   );
 }
