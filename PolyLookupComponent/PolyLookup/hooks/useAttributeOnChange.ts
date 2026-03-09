@@ -17,9 +17,7 @@ export function useAttributeOnChange(fetchXml: string) {
       });
     }
 
-    // TODO: not sure why this is not working
     return () => {
-      console.log("cleanup");
       templateVar.forEach((v) => {
         Xrm.Page.getAttribute(v)?.removeOnChange(invalidateFetchDataFn);
       });

@@ -18,9 +18,7 @@ export function useAttributeOnChange(metadata: IMetadata | undefined, customFilt
       });
     }
 
-    // TODO: not sure why this is not working
     return () => {
-      console.log("cleanup");
       templateVar.forEach((v) => {
         Xrm.Page.getAttribute(v)?.removeOnChange(invalidateFetchDataFn);
       });
