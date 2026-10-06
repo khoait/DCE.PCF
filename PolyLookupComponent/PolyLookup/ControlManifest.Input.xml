@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest>
-  <control namespace="DCEPCF" constructor="PolyLookup" version="1.8.0"
-    display-name-key="PolyLookup v1.8.0"
+  <control namespace="DCEPCF" constructor="PolyLookup" version="1.9.0"
+    display-name-key="PolyLookup v1.9.0"
     description-key="Multi-select lookup supporting different type of many-to-many relationships"
     control-type="standard">
     <!--external-service-usage
@@ -86,6 +86,9 @@
     <property name="selectedItemTemplate" display-name-key="Selected Option Display Template"
       description-key="Dynamic template to display selected option text. Default to the first column in the lookup view if not provided."
       of-type="SingleLine.Text" usage="input" required="false" />
+    <property name="selectedItemsView" display-name-key="Selected Items View"
+      description-key="Only associated records matching the filters of this view are shown. Same configuration as Lookup View: 1 - a FetchXML, 2 - a OData URL to a column of a record containing a FetchXML, 3 - An environment variable logical name containing a FetchXML, 4 - System View name"
+      of-type-group="text" usage="input" required="false" />
     <property name="showOptionDetails" display-name-key="Show Option Details"
       description-key="Option to show more details in suggestion list. Default: Collapsed."
       of-type="Enum" usage="input" required="false" default-value="0">

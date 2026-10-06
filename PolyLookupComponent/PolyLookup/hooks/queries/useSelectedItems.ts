@@ -7,17 +7,24 @@ export function useSelectedItems(
   currentRecordId: string,
   formType: XrmEnum.FormType | undefined,
   firstViewColumn?: string,
-  selectedItemTemplate?: string | null
+  selectedItemTemplate?: string | null,
+  hasSelectedItemsView?: boolean,
+  selectedItemsViewFetchXml?: string
 ) {
+  const filterFetchXml = hasSelectedItemsView ? selectedItemsViewFetchXml : undefined;
+
   return useQuery({
-    queryKey: ["selectedItems", metadata, currentRecordId, formType, firstViewColumn, selectedItemTemplate],
+    queryKey: ["selectedItems", metadata, currentRecordId, formType, firstViewColumn, selectedItemTemplate, filterFetchXml],
     queryFn: () => {
       if (!metadata || !currentRecordId || formType === XrmEnum.FormType.Create) {
         return [];
       }
 
-      return retrieveAssociatedRecords(metadata, currentRecordId, firstViewColumn, selectedItemTemplate);
+      return retrieveAssociatedRecords(metadata, currentRecordId, firstViewColumn, selectedItemTemplate, filterFetchXml);
     },
-    enabled: !!metadata?.intersectEntity.EntitySetName && !!metadata?.associatedEntity.EntitySetName,
+    enabled:
+      !!metadata?.intersectEntity.EntitySetName &&
+      !!metadata?.associatedEntity.EntitySetName &&
+      (!hasSelectedItemsView || !!selectedItemsViewFetchXml),
   });
 }

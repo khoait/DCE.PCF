@@ -129,6 +129,7 @@ export class PolyLookup implements ComponentFramework.StandardControl<IInputs, I
         ? (Number.parseInt(this.context.parameters.tagAction.raw) as TagAction)
         : undefined,
       selectedItemTemplate: this.context.parameters.selectedItemTemplate?.raw,
+      selectedItemsView: this.context.parameters.selectedItemsView?.raw ?? undefined,
       showOptionDetails: this.context.parameters.showOptionDetails?.raw
         ? (Number.parseInt(this.context.parameters.showOptionDetails.raw) as ShowOptionDetailsEnum)
         : undefined,

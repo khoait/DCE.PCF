@@ -5,11 +5,12 @@ export function useLookupViewConfig(
   associatedEntityName: string | undefined,
   primaryIdAttribute: string | undefined,
   primaryNameAttribute: string | undefined,
-  lookupViewValue: string | undefined
+  lookupViewValue: string | undefined,
+  enabled = true
 ) {
   return useQuery({
     queryKey: ["lookupViewConfig", associatedEntityName, lookupViewValue],
     queryFn: () => getLookupViewConfig(associatedEntityName, primaryIdAttribute, primaryNameAttribute, lookupViewValue),
-    enabled: !!associatedEntityName && !!primaryIdAttribute && !!primaryNameAttribute,
+    enabled: enabled && !!associatedEntityName && !!primaryIdAttribute && !!primaryNameAttribute,
   });
 }

@@ -647,8 +647,11 @@ export async function retrieveAssociatedRecords(
   }: IMetadata,
   currentRecordId: string,
   firstViewColumn?: string,
-  selectedItemTemplate?: string | null
+  selectedItemTemplate?: string | null,
+  filterFetchXml?: string
 ) {
+  const associatedFilter = getAssociatedEntityFilter(filterFetchXml);
+
   const columns = getHandlebarsVariables(selectedItemTemplate ?? "");
   let fetchColumns = [
     ...columns,
@@ -666,8 +669,9 @@ export async function retrieveAssociatedRecords(
       </filter>
       <link-entity name="${associatedEntity.LogicalName}" from="${
         associatedEntity.PrimaryIdAttribute
-      }" to="${associatedIntersectAttribute}" alias="aLink">
+      }" to="${associatedIntersectAttribute}" alias="aLink" link-type="inner">
         ${fetchColumns.map((c) => `<attribute name="${c}" />`).join("")}
+        ${associatedFilter}
       </link-entity>
     </entity>
   </fetch>`;
@@ -704,6 +708,26 @@ export async function retrieveAssociatedRecords(
       entity,
     } as EntityOption;
   });
+}
+
+function getAssociatedEntityFilter(fetchXml?: string) {
+  if (!fetchXml) return "";
+
+  const doc = parser.parseFromString(fetchXml, "application/xml");
+  // search conditions only apply to the suggestion list
+  Array.from(doc.getElementsByTagName("condition"))
+    .filter((c) => c.getAttribute("value")?.includes("PolyLookupSearch"))
+    .forEach((c) => c.parentNode?.removeChild(c));
+
+  const entityEl = doc.getElementsByTagName("entity")[0];
+  if (!entityEl) return "";
+
+  const filterXml = Array.from(entityEl.children)
+    .filter((c) => c.tagName === "filter" || c.tagName === "link-entity")
+    .map((c) => serializer.serializeToString(c))
+    .join("");
+
+  return Handlebars.compile(filterXml)(getCurrentRecord());
 }
 
 export function associateRecord(

@@ -92,6 +92,7 @@ export default function PolyLookupControlNewLook({
   tagAction,
   showOptionDetails,
   selectedItemTemplate,
+  selectedItemsView,
   defaultLanguagePack,
   languagePackPath,
   isAuthoringMode,
@@ -155,6 +156,14 @@ export default function PolyLookupControlNewLook({
     lookupView
   );
 
+  const { data: selectedItemsViewConfig } = useLookupViewConfig(
+    metadata?.associatedEntity.LogicalName,
+    metadata?.associatedEntity.PrimaryIdAttribute,
+    metadata?.associatedEntity.PrimaryNameAttribute,
+    selectedItemsView,
+    !!selectedItemsView
+  );
+
   // get selected items
   const {
     data: selectedItems,
@@ -163,7 +172,15 @@ export default function PolyLookupControlNewLook({
     isSuccess: isLoadingSelectedItemsSuccess,
     isError: isErrorSelectedItems,
     error: errorSelectedItems,
-  } = useSelectedItems(metadata, currentRecordId, formType, lookupViewConfig?.firstAttribute, selectedItemTemplate);
+  } = useSelectedItems(
+    metadata,
+    currentRecordId,
+    formType,
+    lookupViewConfig?.firstAttribute,
+    selectedItemTemplate,
+    !!selectedItemsView,
+    selectedItemsViewConfig?.fetchXml
+  );
 
   const {
     data: entityOptions,

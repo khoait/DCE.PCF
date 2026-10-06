@@ -56,6 +56,7 @@ export default function PolyLookupControlClassic({
   showIcon,
   tagAction,
   selectedItemTemplate,
+  selectedItemsView,
   showOptionDetails,
   defaultLanguagePack,
   languagePackPath,
@@ -111,6 +112,14 @@ export default function PolyLookupControlClassic({
     lookupView
   );
 
+  const { data: selectedItemsViewConfig } = useLookupViewConfig(
+    metadata?.associatedEntity.LogicalName,
+    metadata?.associatedEntity.PrimaryIdAttribute,
+    metadata?.associatedEntity.PrimaryNameAttribute,
+    selectedItemsView,
+    !!selectedItemsView
+  );
+
   const fetchXmlTemplateFn = useMemo(
     () => (lookupViewConfig?.fetchXml ? Handlebars.compile(lookupViewConfig?.fetchXml) : null),
     [lookupViewConfig?.fetchXml]
@@ -124,7 +133,15 @@ export default function PolyLookupControlClassic({
     isSuccess: isLoadingSelectedItemsSuccess,
     isError: isErrorSelectedItems,
     error: errorSelectedItems,
-  } = useSelectedItems(metadata, currentRecordId, formType, lookupViewConfig?.firstAttribute, selectedItemTemplate);
+  } = useSelectedItems(
+    metadata,
+    currentRecordId,
+    formType,
+    lookupViewConfig?.firstAttribute,
+    selectedItemTemplate,
+    !!selectedItemsView,
+    selectedItemsViewConfig?.fetchXml
+  );
 
   useEffect(() => {
     if (isFetchingSelectedItems || !isLoadingSelectedItemsSuccess || !onChange) return;
